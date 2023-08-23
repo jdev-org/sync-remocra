@@ -1,0 +1,57 @@
+
+Vagrant.configure("2") do |config|
+  config.vm.host_name   = "edp-syncremocra"
+
+  # https://app.vagrantup.com/gunnix/boxes/ubuntu_server_20.04.1_LTS
+  config.vm.box = "gunnix/ubuntu_server_20.04.1_LTS"
+  config.vm.box_version = "0.0.1"
+
+  # Ports
+  config.vm.network :forwarded_port, guest: 5432, host: 15432
+
+  # Répertoires synchronisés
+  config.vm.synced_folder "scripts", "/scripts", :owner => 'root', create: true
+
+  config.vm.provider :virtualbox do |vb|
+    vb.name = "edp-syncremocra"
+    vb.memory = 2048
+    vb.cpus = 4
+  end
+
+  # Redéfinition des paramètres (une fois)
+  config.vm.provision "shell", inline: <<-SHELL
+    cat /etc/profile | grep EDP_VERSION > /dev/null
+    if [ $? -eq 0 ]; then
+      # Variables déjà dans le profil, on ne va pas plus loin
+      echo "root : pas d'ajout des variables dans le profil (déjà présentes)"
+      exit 0
+    fi
+
+    export EDP_VERSION=$(basename -- /scripts/edp-syncremocra-docker-images-*.tar | sed 's/edp-syncremocra-docker-images-//' | sed 's/.tar//')
+
+    # Ajout des variables dans le profil
+    echo "root : ajout des variables dans le profil"
+    envsubst << 'EOF' >> /etc/profile
+# Chargement local
+export EDP_VERSION=${EDP_VERSION}
+export EDP_DOCKER_IMAGES_TAR="/scripts/edp-syncremocra-docker-images-${EDP_VERSION}.tar"
+export EDP_REGISTRY_SERVER=""
+
+# Registre
+#export EDP_VERSION="latest"
+#export EDP_REGISTRY_SERVER="client-docker-registry.atolcd.com"
+#export EDP_REGISTRY_USERNAME="<username>"
+#export EDP_REGISTRY_PASSWORD="*****"
+#export EDP_DOCKER_IMAGES_TAR=""
+
+# Mail
+export MAIL_HOST="smtp-relay.hosting.priv.atolcd.com"
+export MAIL_PORT=25
+EOF
+    . /etc/profile
+    SHELL
+
+  # Installation
+  config.vm.provision "shell", path: "../dist/install-ubuntu-20.04.sh"
+
+end

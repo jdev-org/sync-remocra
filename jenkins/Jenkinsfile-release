@@ -1,0 +1,62 @@
+#!/usr/bin/env groovy
+library 'atolcd-jenkins'
+
+pipeline {
+  options {
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+  }
+  parameters {
+    // Application version
+    string(name: 'COMMIT_TO_BUILD', defaultValue: 'master', description: 'Commit, branch or tag')
+    // uid / gid of docker user
+    string(name: 'DOCKER_UID', defaultValue: '2000', description: 'Docker user id')
+    string(name: 'DOCKER_GID', defaultValue: '2000', description: 'Docker group id')
+  }
+  agent {
+    label 'release'
+  }
+  environment {
+    APP_VERSION = sh (
+            script: 'git describe --match \'v*\' |cut -c2-',
+            returnStdout: true
+    ).trim()
+  }
+  stages {
+    stage('Set version') {
+      steps {
+        script {
+          echo "APP_VERSION : ${APP_VERSION}"
+
+          mavenInsideDocker(imageVersion: '3-jdk-11') {
+            sh "mvn -ntp -B -U -e -ff -DnewVersion=${APP_VERSION} versions:set -DgenerateBackupPoms=false"
+          }
+        }
+      }
+    }
+    stage('Build & publish docker') {
+      steps {
+        script {
+          dockerBuildAndPublish imageName: "client-docker-registry.atolcd.com/edp/syncremocra:latest",
+                  buildArgs:[UID:"${DOCKER_UID}" , GID:"${DOCKER_GID}", APP_VERSION:"${APP_VERSION}"] , buildDir: './' , dockerfile:'./docker/app/Dockerfile' , extraTags:["${APP_VERSION}"]
+          withCredentials([usernameColonPassword(credentialsId: 'nexus3-jenkins', variable: 'NEXUS3_AUTH')]) {
+            sh '[ -f docker/pdi/ext/pdi-ce-9.1.0.0-324.zip ] || curl --user "$NEXUS3_AUTH" -o docker/pdi/ext/pdi-ce-9.1.0.0-324.zip https://nexus3-ovh.priv.atolcd.com/repository/raw-atolcd-pentaho/9.1/pdi-ce-9.1.0.0-324.zip'
+            sh '[ -f docker/pdi/ext/pentaho-gis-plugins-1.4.0-bin-9.zip ] || curl --user "$NEXUS3_AUTH" -o docker/pdi/ext/pentaho-gis-plugins-1.4.0-bin-9.zip https://nexus3-ovh.priv.atolcd.com/repository/farmeo-sig/ext/pentaho-gis-plugins-1.4.0-bin-9.zip'
+            sh '[ -f docker/pdi/ext/postgresql-42.2.19.jar ] || curl --user "$NEXUS3_AUTH" -o docker/pdi/ext/postgresql-42.2.19.jar https://nexus3-ovh.priv.atolcd.com/repository/maven-proxy/org/postgresql/postgresql/42.2.19/postgresql-42.2.19.jar'
+          }
+          dockerBuildAndPublish imageName: "client-docker-registry.atolcd.com/edp/syncremocra-pdi:latest",
+                  buildArgs:[UID:"${DOCKER_UID}" , GID:"${DOCKER_GID}" , APP_VERSION:"${APP_VERSION}"] , buildDir: './docker/pdi' , dockerfile:'./docker/pdi/Dockerfile' , extraTags:["${APP_VERSION}"]
+
+        }
+      }
+    }
+  }
+  post {
+    success {
+      zulipNotification stream: 'MIRE', topic: 'releases-edp-syncremocra'
+    }
+    unsuccessful {
+      zulipNotification stream: 'MIRE', topic: 'releases-edp-syncremocra'
+    }
+  }
+}

@@ -1,0 +1,2 @@
+ALTER TABLE edp.message
+ADD COLUMN date_debut_verif TIMESTAMP WITHOUT TIME ZONE;

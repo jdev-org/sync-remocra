@@ -1,0 +1,56 @@
+= Manuel de mise à jour
+Eau de Paris - Synchronisation Remocra
+v${project.version}, ${timestamp}
+
+:experimental:
+:icons: font
+
+:toc:
+
+<<<
+
+include::include/historique.adoc[]
+
+<<<
+
+:numbered:
+
+
+* link:index.html[Accueil]
+
+
+== Ubuntu 20.04
+
+On met à jour la version dans la configuration :
+[source,sh]
+----
+# Exemple de version
+export EDP_VERSION=1.0
+
+# Nouvelle version dans le fichier de configuration
+sed -i "s/EDP_VERSION.*=.*/EDP_VERSION=${EDP_VERSION}/g" /var/syncremocra/common.env
+----
+
+Lorsqu'on s'appuie sur un registre, un `docker pull` sera réalisé automatiquement lors de la prochaine exécution. Ceci peut être anticipé :
+[source,sh]
+----
+export APP_EDP_REGISTRY_PREFIX=$([ -z "${EDP_REGISTRY_SERVER}" ] || echo "${EDP_REGISTRY_SERVER}" | sed "s/\/\{0,1\}$/\//")
+export APP_VERSION=$(cat /var/syncremocra/common.env | grep EDP_VERSION | cut -c13-)
+# syncremocra
+export APP_IMAGE_FULL=${APP_EDP_REGISTRY_PREFIX}edp/syncremocra:${APP_VERSION}
+docker pull ${APP_IMAGE_FULL}
+# syncremocra-pdi
+export APP_IMAGE_FULL=${APP_EDP_REGISTRY_PREFIX}edp/syncremocra-pdi:${APP_VERSION}
+docker pull ${APP_IMAGE_FULL}
+
+docker image prune -f
+----
+
+Lorsqu'aucun registre n'est utilisé, on charge les nouvelles images, en ayant déposé le fichier tar au préalable :
+Par exemple :
+
+[source,sh]
+----
+# Chargement de l'image
+docker load < edp-syncremocra-docker-images-${EDP_VERSION}.tar
+----

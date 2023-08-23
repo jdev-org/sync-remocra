@@ -1,0 +1,21 @@
+= Manuel d'administration
+Eau de Paris - Synchronisation Remocra
+v${project.version}, ${timestamp}
+
+:experimental:
+:icons: font
+
+:toc:
+
+<<<
+
+include::include/historique.adoc[]
+
+<<<
+
+:numbered:
+
+
+* link:Manuel%20installation.html[Manuel d'installation]
+* link:Manuel%20mise%20a%20jour.html[Manuel de mise à jour]
+* link:Manuel%20exploitation.html[Manuel d'exploitation]

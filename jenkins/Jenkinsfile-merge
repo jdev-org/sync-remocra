@@ -1,0 +1,77 @@
+#!/usr/bin/env groovy
+library 'atolcd-jenkins'
+pipeline {
+  options {
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+  }
+  agent any
+  stages {
+    stage('Dependencies ext') {
+      steps {
+        script {
+          withCredentials([usernameColonPassword(credentialsId: 'nexus3-jenkins', variable: 'NEXUS3_AUTH')]) {
+            sh '[ -f docker/postgres/ext/oracle-instantclient-basic-21.1.0.0.0-1.x86_64.rpm ] || curl --user "$NEXUS3_AUTH" -o docker/postgres/ext/oracle-instantclient-basic-21.1.0.0.0-1.x86_64.rpm https://nexus3-ovh.priv.atolcd.com/repository/raw-edp/rpms/oracle-instantclient-basic-21.1.0.0.0-1.x86_64.rpm'
+            sh '[ -f docker/postgres/ext/oracle-instantclient-devel-21.1.0.0.0-1.x86_64.rpm ] || curl --user "$NEXUS3_AUTH" -o docker/postgres/ext/oracle-instantclient-devel-21.1.0.0.0-1.x86_64.rpm https://nexus3-ovh.priv.atolcd.com/repository/raw-edp/rpms/oracle-instantclient-devel-21.1.0.0.0-1.x86_64.rpm'
+            sh '[ -f docker/postgres/ext/oracle-instantclient-sqlplus-21.1.0.0.0-1.x86_64.rpm ] || curl --user "$NEXUS3_AUTH" -o docker/postgres/ext/oracle-instantclient-sqlplus-21.1.0.0.0-1.x86_64.rpm https://nexus3-ovh.priv.atolcd.com/repository/raw-edp/rpms/oracle-instantclient-sqlplus-21.1.0.0.0-1.x86_64.rpm'
+          }
+        }
+      }
+    }
+    stage('Build App') {
+      steps {
+        script {
+          db_image = docker.build(
+            'edp/syncremocra-db',
+            "--force-rm -f ./docker/postgres/Dockerfile ./docker/postgres"
+          )
+        }
+        script {
+	  db_image.withRun(
+	    '-e "PGDATA=/var/lib/postgresql/data/pgdata" -e "POSTGRES_DB=edp" ' +
+	    '-e "POSTGRES_USER=edp" -e "POSTGRES_PASSWORD=edp" ' +
+	    '-e TZ="Europe/Paris" '
+	  ) { pg ->
+	    docker.image('maven:3-jdk-11').inside(
+		"--link ${pg.id}:db.syncremocra.eaudeparis.fr " +
+		"-v /var/lib/jenkins/.m2/settings.xml:/tmp/settings.xml:ro"
+	      ) {
+	      sh "mvn -ntp -Duser.home=${env.WORKSPACE} -s /tmp/settings.xml -B -U -e -ff " +
+		  "clean verify cyclonedx:makeAggregateBom " +
+		  "-Dedp.database.serverName=db.syncremocra.eaudeparis.fr"
+	    }
+	  }
+
+        }
+      }
+      post {
+        success {
+          archiveArtifacts allowEmptyArchive: true, artifacts: 'db/target/syncremocra-db-*.jar', fingerprint: true
+          archiveArtifacts allowEmptyArchive: true, artifacts: 'app/target/syncremocra-app-*.jar', fingerprint: true
+          archiveArtifacts allowEmptyArchive: true, artifacts: 'doc/target/syncremocra-doc-*.zip', fingerprint: true
+        }
+      }
+    }
+    stage('Merge and publish SBOM') {
+          when {
+              expression { ! isGerritReview() }
+          }
+          steps {
+              mergedDependencyTrackPublisher projectName: 'sync-remocra', files: ["db/target/bom.xml", "app/target/bom.xml"]
+          }
+    }
+    stage('Clean workspace') {
+      steps {
+        sh 'git checkout -- .'
+      }
+    }
+  }
+  post {
+    success {
+      zulipNotification stream: 'MIRE', topic: 'reviews-edp-syncremocra'
+    }
+    unsuccessful {
+      zulipNotification stream: 'MIRE', topic: 'reviews-edp-syncremocra'
+    }
+  }
+}

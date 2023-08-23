@@ -1,0 +1,307 @@
+= Manuel d'installation
+Eau de Paris - Synchronisation Remocra
+v${project.version}, ${timestamp}
+
+:experimental:
+:icons: font
+
+:toc:
+
+<<<
+
+include::include/historique.adoc[]
+
+<<<
+
+:numbered:
+
+
+* link:index.html[Accueil]
+
+
+== Ubuntu 20.04 LTS
+
+Vérifier la version installée avec `lsb_release -d`.
+
+Le script `dist/install-ubuntu-20.04.sh` se charge à la fois d'installer les dépendances (notamment `docker`) et de mettre en place les scripts nécessaires au fonctionnement de l'applicatif.
+La configuration de l'environnement est réalisée avec des variables d'environnement dont les valeurs par défaut sont définies au début du script.
+
+Pour bien maitriser le processus d'installation et prendre en compte les spécificités d'un serveur donné, nous conseillons de s'en inspirer plutôt que de l'exécuter directement.
+
+Deux options se présentent : avec registre ou sans registre.
+
+
+=== Installation avec registre
+
+*Les variables `EDP_REGISTRY_SERVER`, `EDP_REGISTRY_USERNAME` et `EDP_REGISTRY_PASSWORD` doivent être définies et exportée avant la procédure*. Elles sont nécessaires pour se connecter au registry Docker et on ne souhaite pas versionner les credentials (sécurité). Le registre est utilisé uniquement lorsque la variable `EDP_REGISTRY_SERVER` est définie. Par défaut la version `latest` est utilisée.
+
+Après vérification, suivre les instructions du script `dist/install-ubuntu-20.04.sh` ou le déposer et l'exécuter :
+[source,sh]
+----
+# Pré-requis : accès au registry docker
+# tip : espace devant la commande pour ne pas la stocker dans l'historique
+export EDP_REGISTRY_SERVER="client-docker-registry.atolcd.com"
+export EDP_REGISTRY_USERNAME="le-nom-de-l-utilisateur"
+ export EDP_REGISTRY_PASSWORD="********"
+
+# Exemple de version
+export EDP_VERSION=1.0-SNAPSHOT
+
+# Démarrage de l'installation (exemple)
+chmod +x /root/install-ubuntu-20.04.sh
+/root/install-ubuntu-20.04.sh
+----
+
+Vérifier par exemple avec la commande : `/var/syncremocra/run-db-validate.sh`
+
+=== Installation sans registre
+
+*La variable `EDP_DOCKER_IMAGES_TAR` doit être définie et exportée avant la procédure*. Elle définit le chemin vers un fichiers contenant les images docker.
+
+Après vérification, suivre les instructions du script `dist/install-ubuntu-20.04.sh` ou le déposer et l'exécuter :
+[source,sh]
+----
+# Exemple de version
+export EDP_VERSION=1.0-SNAPSHOT
+# Exemple d'emplacement de fichier contenant les images docker
+export EDP_DOCKER_IMAGES_TAR="/root/edp-syncremocra-docker-images-${EDP_VERSION}.tar"
+
+# Démarrage de l'installation (exemple)
+chmod +x /root/install-ubuntu-20.04.sh
+/root/install-ubuntu-20.04.sh
+----
+
+Vérifier par exemple avec la commande : `/var/syncremocra/run-db-validate.sh`
+
+== Tâches planifiées
+
+Mettre en place les tâches planifiées sur l'utilisateur `edp`.
+Voir la fin du script d'installation pour inspiration.
+
+Exemple :
+
+[source,sh]
+----
+crontab -u edp -l
+
+# Résultat :
+* * * * * /var/syncremocra/run-db-validate.sh
+----
+
+
+
+== Serveur de recette
+
+=== Mise à jour syncremocra
+
+Mise à jour des fichiers de paramétrage
+[source,sh]
+----
+sudo su edp
+nano /var/syncremocra/common.env
+nano /var/syncremocra/config/syncremocra.conf
+# docker pull client-docker-registry.atolcd.com/edp/syncremocra
+----
+
+
+Reconfiguration de l'accès à Oracle depuis PostgreSQL (remplacer le XXXXXXXXXX par la bonne valeur)
+[source,sh]
+----
+psql -U edp  <<EOF
+
+ALTER SERVER edp  OPTIONS (SET dbserver '//si-spwr-bdd:1521/edpsigrec');
+
+ALTER USER MAPPING FOR edp SERVER edp OPTIONS (SET user 'EDP_REMOCRA', SET password 'XXXXXXXXXX');
+
+-- Si besoin (exemple) :
+-- ALTER FOREIGN TABLE edp.VUE_PEI_EDP_REMOCRA OPTIONS (drop schema);
+
+EOF
+----
+
+===  Mise en place du traitement PDI
+
+Répertoires et création des fichiers de paramétrage
+[source,sh]
+----
+sudo su edp
+nano /var/syncremocra/pdi/edp.properties
+# docker pull client-docker-registry.atolcd.com/edp/syncremocra-pdi
+----
+
+Création du script `run-edp_notification.sh`
+[source,sh]
+----
+addpdicontext() {
+  export APP_CTX=$1
+  export APP_EDP_REGISTRY_PREFIX=$([ -z "${EDP_REGISTRY_SERVER}" ] || echo "${EDP_REGISTRY_SERVER}" | sed "s/\/\{0,1\}$/\//")
+  envsubst << "EOF" > /var/syncremocra/pdi/run-${APP_CTX}.sh
+#! /bin/sh
+
+# On vérifie qu'un conteneur de même nom n'est pas en cours d'exécution
+if [ "$(docker ps -q -f name=edp-syncremocra-pdi-${APP_CTX})" ]; then
+  echo "Conteneur edp-syncremocra-pdi-${APP_CTX} déjà en cours d'exécution"
+else
+  docker run --network="host" --rm --name edp-syncremocra-pdi-${APP_CTX} \
+    --user ${EDP_UID}:${EDP_GID} \
+    -v /var/syncremocra/pdi/edp.properties:/jobs/edp.properties \
+    ${APP_EDP_REGISTRY_PREFIX}edp/syncremocra-pdi:$(cat /var/syncremocra/common.env | grep EDP_VERSION | cut -c13-) \
+    \
+    -file:"/jobs/${APP_CTX}.kjb" -level:Error
+fi
+EOF
+  chmod u+x /var/syncremocra/pdi/run-${APP_CTX}.sh
+}
+
+addpdicontext edp_notification
+----
+
+
+Rotation des journaux PDI
+[source,sh]
+----
+sudo su
+envsubst << "EOF" > /etc/logrotate.d/syncremocra-pdi
+/var/log/syncremocra/notification.log {
+    copytruncate
+    daily
+    rotate 7
+    compress
+    missingok
+    create 644 edp edp
+}
+EOF
+----
+
+=== Tâches planifiées
+
+[source,sh]
+----
+crontab -e -u edp
+----
+
+Exemple :
+[source,sh]
+----
+# Nettoyage préventif des images temporaires
+0 1 * * *   docker image prune -f
+# Notifications
+*/5 * * * * /var/syncremocra/pdi/run-edp_notification.sh 2>&1 | tee -a /var/syncremocra/log/notification.log
+# Détection des changements locaux et envoi vers Remocra
+*/2 * * * * /var/syncremocra/run-changedatacapture.sh
+*/2 * * * * /var/syncremocra/run-pushworker.sh
+----
+
+
+
+
+== Divers
+
+=== Tests
+
+[source,sh]
+----
+# On force la date de dernière exécution
+psql -c "UPDATE edp.parametres SET valeur = '2020-01-01 00:00:00' where code = 'LAST_EXECUTION_CHANGE_DATA_CAPTURE';"
+
+# Capture des changements
+/var/syncremocra/run-changedatacapture.sh
+
+# Messages et erreurs
+psql -c "select * from message;"
+psql -c "select * from erreur;"
+
+# Envoi des messages
+/var/syncremocra/run-pushworker.sh
+
+# Messages et erreurs
+psql -c "select * from message;"
+psql -c "select * from erreur;"
+
+# Notification
+/var/syncremocra/pdi/run-edp_notification.sh
+
+# Rejeu des notifications
+psql -c "update erreur set notifie=false;"
+/var/syncremocra/pdi/run-edp_notification.sh
+----
+
+
+
+=== Version des application
+
+Afficher la version de l'application :
+[source,sh]
+----
+sudo su edp
+# syncremocra
+docker run --rm --name edp-syncremocra \
+  -u $(id -u):$(id -g) \
+  -v "/var/syncremocra/config":/app/config -v "/var/syncremocra/log":/app/log \
+  client-docker-registry.atolcd.com/edp/syncremocra\
+  \
+  --version
+
+# syncremocra-pdi
+docker run --rm --name edp-syncremocra-pdi \
+  --entrypoint= \
+  client-docker-registry.atolcd.com/edp/syncremocra-pdi \
+  \
+  cat /scripts/version.txt
+----
+
+
+
+=== Tests SMTP
+
+****
+Ne fonctionne pas certainement à cause de l'authentification... Le serveur ne propose pas de méthode d'authentification avec EHLO...
+
+Conservé pour mémoire !
+****
+Exemple avec `STARTTLS` et `ÀUTH LOGIN` :
+[source,sh]
+----
+DESTINATAIRE="cva@atolcd.com" SMTP_USERNAME="service.remocra@eaudeparis.fr" SMTP_PASSWORD="XXXXXXXXXX"
+(
+  sleep 1 && \
+  echo "HELO smtp.office365.com" && \
+  sleep 1 && \
+  # Liste des commandes disponibles
+  echo "EHLO smtp.office365.com" && \
+  sleep 1 &&
+  # Démarrage TLS
+  echo "STARTTLS" && \
+  sleep 1 && \
+  # Authentification
+  echo "AUTH LOGIN" && \
+  sleep 1 && \
+  echo $(echo -n "${SMTP_USERNAME}" | base64) && \
+  sleep 1 && \
+  echo $(echo -n "${SMTP_PASSWORD}" | base64) && \
+  sleep 1 && \
+  # Envoi du mail
+  echo "MAIL FROM:<service.remocra@eaudeparis.fr>" && \
+  sleep 1 && \
+  echo "RCPT TO:${DESTINATAIRE}" && \
+  sleep 1 && \
+  echo "DATA" && \
+  sleep 1 && \
+  echo "Subject: [EDP] test envoi mail $(date)" && \
+  sleep 1 && \
+  echo "Test envoi via smtp.office365.com" && \
+  sleep 1 && \
+  echo "" && \
+  sleep 1 && \
+  echo "..." && \
+  sleep 1 && \
+  echo "EDP" && \
+  sleep 1 && \
+  echo "" && \
+  sleep 1 && \
+  echo "." && \
+  sleep 1 && \
+  # Fin
+  echo "QUIT"
+) | telnet smtp.office365.com 587
+----

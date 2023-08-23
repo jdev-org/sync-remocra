@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>fr.eaudeparis</groupId>
+    <artifactId>syncremocra-parent</artifactId>
+    <version>1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>syncremocra-db</artifactId>
+  <name>syncremocra-db</name>
+  
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>11</maven.compiler.release>
+
+    <plugin.build-helper-maven-plugin.version>3.1.0</plugin.build-helper-maven-plugin.version>
+    <plugin.jooq-codegen-maven.version>3.14.8</plugin.jooq-codegen-maven.version>
+
+    <db.user>edp</db.user>
+    <db.pass>edp</db.pass>
+    <db.database>edp</db.database>
+    <db.schema>edp</db.schema>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j18-impl</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jooq</groupId>
+      <artifactId>jooq</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.locationtech.jts</groupId>
+      <artifactId>jts-core</artifactId>
+      <version>${jts.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.locationtech.jts.io</groupId>
+      <artifactId>jts-io-common</artifactId>
+      <version>${jts.version}</version>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>${plugin.build-helper-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/main/jooq</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <configuration>
+          <url>jdbc:postgresql://localhost:5432/edp</url>
+          <user>edp</user>
+          <password>edp</password>
+          <defaultSchema>edp</defaultSchema>
+          <schemas>edp</schemas>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jooq</groupId>
+        <artifactId>jooq-codegen-maven</artifactId>
+        <version>${plugin.jooq-codegen-maven.version}</version>
+        <configuration>
+          <jdbc>
+            <driver>org.postgresql.Driver</driver>
+            <url>jdbc:postgresql:${db.database}</url>
+            <user>${db.user}</user>
+            <password>${db.pass}</password>
+          </jdbc>
+          <generator>
+            <generate>
+              <pojos>true</pojos>
+              <records>true</records>
+              <fluentSetters>true</fluentSetters>
+            </generate>
+            <database>
+              <name>org.jooq.meta.postgres.PostgresDatabase</name>
+              <includes>.*</includes>
+              <excludes>flyway_schema_history|flyway_data_history</excludes>
+              <schemata>
+                  <schema>
+                      <inputSchema>edp</inputSchema>
+                  </schema>
+              </schemata>
+
+              <customTypes>
+                <customType>
+                  <name>Point</name>
+                  <type>org.locationtech.jts.geom.Point</type>
+                  <converter>fr.eaudeparis.syncremocra.db.binding.PointBinding</converter>
+                </customType>
+              </customTypes>
+
+              <forcedTypes>
+                <!-- Ex : edp.VUE_PEI_EDP_REMOCRA.geometry1 -->
+                <forcedType>
+                  <name>Point</name>
+                  <includeExpression>geometry1</includeExpression>
+                </forcedType>
+              </forcedTypes>
+            </database>
+            <target>
+              <packageName>fr.eaudeparis.syncremocra.db.model</packageName>
+              <directory>${basedir}/src/main/jooq</directory>
+            </target>
+          </generator>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>

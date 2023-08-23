@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Help",
+            "request": "launch",
+            "mainClass": "fr.eaudeparis.syncremocra.App",
+            "projectName": "syncremocra-app",
+            "vmArgs": "-Dedp.database.serverName=localhost"
+        },
+        {
+            "type": "java",
+            "name": "Migrate",
+            "request": "launch",
+            "mainClass": "fr.eaudeparis.syncremocra.App",
+            "projectName": "syncremocra-app",
+            "args": "db-migrate"
+        },
+        {
+            "type": "java",
+            "name": "Validate",
+            "request": "launch",
+            "mainClass": "fr.eaudeparis.syncremocra.App",
+            "projectName": "syncremocra-app",
+            "args": "db-validate"
+        },
+        {
+            "type": "java",
+            "name": "Job tests",
+            "request": "launch",
+            "mainClass": "fr.eaudeparis.syncremocra.App",
+            "projectName": "syncremocra-app",
+            "args": "job-test-all"
+        }
+    ]
+}

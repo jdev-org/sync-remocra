@@ -1,0 +1,40 @@
+DELETE FROM edp.type_erreur;
+
+ALTER TABLE edp.type_erreur
+ADD COLUMN message_erreur CHARACTER VARYING;
+
+INSERT INTO edp.type_erreur(code, iterations, contexte, message_erreur, message_action) VALUES
+('0001', 10, 'EDP_SYSTEME', 'La connexion à la base de données WatGIS (Oracle) est impossible ', 'Vérifier que le serveur est opérationnel et vérifier le paramétrage selon le processus défini dans le manuel de paramétrage'),
+('0002', 10, 'EDP_SYSTEME', 'La connexion à la base de données EDP Synchronisation (PostgreSQL)  est impossible', 'Vérifier que le serveur est opérationnel et vérifier le paramétrage selon le processus défini dans le manuel de paramétrage'),
+('0003', 10, 'EDP_SYSTEME', 'Le serveur REMOCRA est injoignable', 'Vérifier que le serveur est opérationnel (demande Atol CD) et que son accès est autorisé (firewall EDP, etc.)'),
+('1000', 1, 'EDP_METIER', 'Le numéro de PEI spécifié ne correspond à aucun hydrant présent en base de données REMOCRA', 'Supprimer le PEI dans la base EDP (WatGIS)'),
+('1300', 1, 'REMOCRA_METIER', 'Le numéro de PEI spécifié existe en base de données REMOCRA mais les droits accordés par l''autorité de police ne sont pas suffisants',  'Procéder à l''attribution des droits via l''interface applicative REMOCRA'),
+('1001', 1, 'EDP_METIER', 'Le code du diamètre des demi raccord saisi ne correspond à aucune valeur connue', 'Mettre à jour la table de correspondance au sein de la base de synchronisation EDP - REMOCRA et attendre la prochaine synchronisaton'),
+('1002', 1, 'EDP_METIER', 'Le code de marque de PEI saisi ne correspond à aucune valeur connue', 'Mettre à jour la table de correspondance au sein de la base de synchronisation EDP - REMOCRA et attendre la prochaine synchronisaton'),
+('1003', 1, 'EDP_METIER', 'Le code de modèle du PEI saisi ne correspond à aucune valeur connue', 'Mettre à jour la table de correspondance au sein de la base de synchronisation EDP - REMOCRA et attendre la prochaine synchronisaton'),
+('1004', 1, 'EDP_METIER', 'Le code de nature du réseau saisi ne correspond à aucune valeur connue', 'Mettre à jour la table de correspondance au sein de la base de synchronisation EDP - REMOCRA et attendre la prochaine synchronisaton'),
+('1005', 1, 'EDP_METIER', 'Le code de nature de canalisation saisi ne correspond à aucune valeur connue', 'Mettre à jour la table de correspondance au sein de la base de synchronisation EDP - REMOCRA et attendre la prochaine synchronisaton'),
+('1301', 1, 'REMOCRA_SYSTEME', 'Une erreur est survenue lors de la mise à jour du PEI dans REMOCRA', 'Procéder à l''analyse des logs applicatifs'),
+('1006', 1, 'EDP_METIER', 'Le code de matériau saisi ne correspond à aucune valeur connue', 'Mettre à jour la table de correspondance au sein de la base de synchronisation EDP - REMOCRA et attendre la prochaine synchronisaton'),
+('1100', 1, 'REMOCRA_METIER', 'Le jumelage entre les deux hydrants renseignés n''est pas possible. La distance entre les deux hydrants doit être inféreure à 25 mètres, et les hydrants doivent être de nature BI', 'Procéder au rapprochement des deux PEI  via l''interface applicative REMOCRA'),
+('1007', 1, 'REMOCRA_METIER', 'Le numéro de PEI jumelé saisi ne correspond à aucun hydrant connu', 'Supprimer le PEI dans WatGIS ou procéder à la création du PEI via l''interface applicative REMOCRA'),
+('2000', 1, 'EDP_METIER', 'La date spécifiée n''existe pas ou ne respecte pas le format YYYY-MM-DD hh:mm', 'Créer la visite via l''interface applicative REMOCRA et procéder à la vérification du formatage des dates '),
+('2001', 1, 'EDP_METIER', 'Le type de visite spécifié n''existe pas', 'Créer la visite via l''interface applicative REMOCRA et procéder à la vérification du type de visite dans la base EDP'),
+('2100', 1, 'EDP_METIER', 'Une visite est déjà présente à cette date et à cette heure pour ce PEI', 'Créer la visite via l''interface applicative REMOCRA si nécessaire'),
+('2101', 1, 'REMOCRA_METIER', 'Le PEI n''est pas en mesure de recevoir ce type de visite. Une visite de réception et une visite de reconnaissance opérationnelle initiale doivent être préalablement renseignées', 'S''assurer via l''interface applicative REMOCRA que le PEI dispose d''une visite de Réception'),
+('2102', 1, 'REMOCRA_METIER', 'Le PEI n''est pas en mesure de recevoir ce type de visite. Une visite de reconnaissance opérationnelle initiale doit être préalablement renseignées', 'S''assurer via l''interface applicative REMOCRA que le PEI dispose d''une visite de Reconnaissance Opérationnelle Initiale'),
+('2103', 1, 'EDP_METIER', 'Le PEI n''est pas en mesure de recevoir ce type de visite car ce dernier a déjà été renseigné au sein du PEI', 'Créer éventuellemet la visite via l''interface applicative REMOCRA en renseignant un autre type de visite'),
+('2002', 1, 'EDP_METIER', 'Les motifs d''indisponibilités renseignés ne disposent d''aucune correspondance dans la base de données REMOCRA', 'Mettre à jour la table de correspondance au sein de la base de synchronisation EDP - REMOCRA'),
+('2104', 1, 'EDP_METIER', 'Une ou plusieurs anomalies on été marquées constatées sans avoir été contrôlées', 'Créer la visite via l''interface applicative REMOCRA'),
+('2105', 1, 'EDP_METIER', 'Le débit ne peut être inférieur à 0', 'Créer la visite via l''interface applicative REMOCRA et corriger éventuellement la valeur dans WatGIS'),
+('2106', 1, 'EDP_METIER', 'Le débit maximum ne peut être inférieur à 0', 'Créer la visite via l''interface applicative REMOCRA et corriger éventuellement la valeur dans WatGIS'),
+('2107', 1, 'EDP_METIER', 'La pression ne peut être inférieure à 0', 'Créer la visite via l''interface applicative REMOCRA et corriger éventuellement la valeur dans WatGIS'),
+('2108', 1, 'EDP_METIER', 'La pression dynamique ne peut être inférieure à 0', 'Créer la visite via l''interface applicative REMOCRA et corriger éventuellement la valeur dans WatGIS'),
+('2109', 1, 'EDP_METIER', 'La pression dynamique au débit maximum ne peut être inférieure à 0', 'Créer la visite via l''interface applicative REMOCRA et corriger éventuellement la valeur dans WatGIS'),
+('2300', 1, 'REMOCRA_SYSTEME', 'Une erreur est survenue lors de la mise à jour d''une visite dans REMOCRA', 'Faire procéder à l''analyse des logs applicatifs par le prestataire en charge de de l''hébergement de REMOCRA'),
+('2003', 1, 'EDP_METIER', 'Aucune visite avec cet identifiant n''a été trouvée pour le numéro de PEI spécifié', 'Aucune action'),
+('0200', 1, 'EDP_SYSTEME', 'Non authentifié ou accès à la ressource non autorisé', 'Vérifier le paramétrage de la clef d''API selon le processus défini dans le manuel de paramétrage et faire procéder, si nécessaire à l''attribution des droits via l''interface applicative REMOCRA'),
+('2200', 1, 'EDP_METIER', 'Ce type de visite n''est pas autorisé pour votre organisme sur cet hydrant', 'Demander une évolution du dispositif'),
+('2201', 1, 'EDP_METIER', 'Votre organisme n''est pas autorisé à modifier une visite de ce type sur cet hydrant', 'Demander une évolution du dispositif'),
+('2110', 1, 'EDP_METIER', 'Modification de la visite impossible : une visite plus récente est présente', 'Aucune action'),
+('1008', 1, 'EDP_METIER', 'Un pei indiqué comme disponible alors qu''au moins une anomalie est présente', 'Mettre à jour la base EDP pour indiquer le pei en indisponible ou lui retirer ses motifs d''indisponibilité');

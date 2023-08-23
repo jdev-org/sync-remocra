@@ -1,0 +1,2 @@
+INSERT INTO edp.type_erreur(code, iterations, contexte, message_action, message_erreur) VALUES
+('I1003', 1, 'EDP_METIER', 'Procéder à la mise à jour manuelle du PEI', 'Suite à un problème de connexion, les changements de disponibilité et/ou de données patrimoniales d''ont pas pu être transmis à Remocra');

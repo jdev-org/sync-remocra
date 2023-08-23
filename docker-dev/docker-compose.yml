@@ -1,0 +1,29 @@
+# docker-compose.yml
+version: '3'
+
+services:
+       dev-edp-bd:
+         container_name: dev-edp-db-postgres
+         image: geographica/postgis-oracle-fdw
+         ports:
+           - "5432:5432"
+         volumes:
+           - .docker/postgresql:/var/lib/postgresql/data
+         environment:
+           ENV LOCALE: fr_FR
+           POSTGRES_USER: postgres
+           POSTGRES_DB: edp
+           POSTGRES_PASSWORD: postgres
+           TZ: "Europe/Paris"
+
+       oracle:
+         container_name: dev-edp-db-oracle
+         image: orangehrm/oracle-xe-11g
+         ports:
+           - "3010:3010"
+           - "1521:1521"
+         volumes:
+           - .docker/oracle:/var/lib/oracle
+
+
+

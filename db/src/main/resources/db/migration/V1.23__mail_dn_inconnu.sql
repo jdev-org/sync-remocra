@@ -1,0 +1,2 @@
+INSERT INTO edp.type_erreur(code, iterations, contexte, message_action, message_erreur) VALUES
+('I1001', 1, 'EDP_METIER', 'Vérifier que le diamètre nominal est bien renseigné, le cas échéant se rapprocher de la BSPP', 'Le diamètre renseigné ne possède aucune correspondance dans la base REMOCRA');

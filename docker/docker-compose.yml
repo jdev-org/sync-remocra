@@ -1,0 +1,71 @@
+version: '3.5'
+services:
+
+  db:
+    build: postgres/
+    image: edp-db
+    #image: postgres:13
+    container_name: edp-db
+    user: ${UID:-1000}:${GID:-1000}
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER: edp
+      POSTGRES_PASSWORD: edp
+      POSTGRES_DB: edp
+      TZ: "Europe/Paris"
+    volumes:
+      - /etc/passwd:/etc/passwd:ro
+      - .docker/postgresql/data:/var/lib/postgresql/data
+      #- XXX/srid.map:/usr/share/postgresql/13/srid.map
+      # Migrations jouées par l'application
+      #- ../app/src/main/resources/db/migration/XXX.sql:/docker-entrypoint-initdb.d/init1.sql
+    ports:
+      - "5432:5432"
+    logging:
+      options:
+        max-size: "10k"
+        max-file: "20"
+    networks:
+      edp:
+        aliases:
+          - db.syncremocra.eaudeparis.fr
+
+  ora:
+    image: absolutapps/oracle-12c-ee
+    container_name: edp-ora
+    environment:
+      ORACLE_SID: edpsigdev
+      SERVICE_NAME: edpsigdev
+    volumes:
+      - .docker/oracle/data:/u01/app/oracle
+      - ./oracle.init.d:/oracle.init.d:ro
+    ports:
+      - "8070:8080"
+      - "1521:1521"
+    logging:
+      options:
+        max-size: "10k"
+        max-file: "20"
+    networks:
+      edp:
+        aliases:
+          - ora.syncremocra.eaudeparis.fr
+
+  mailtrap:
+    image: eaudeweb/mailtrap:latest
+    container_name: edp-mailtrap
+    #user: ${UID:-1000}:${GID:-1000}
+    environment:
+      MT_USER: edp
+      MT_PASSWD: edp
+    ports:
+      - "8090:80"
+      - "2500:25"
+    networks:
+      edp:
+        aliases:
+          - mailtrap.syncremocra.eaudeparis.fr
+
+networks:
+  edp:
+    name: 'edp_network'

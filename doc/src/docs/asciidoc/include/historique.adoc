@@ -1,0 +1,9 @@
+
+== Historique du document
+
+[cols="1,1,5"]
+|=======================================================================
+|Version |Date |Modifications
+|0.1 |09/03/2021 |Version initiale
+|0.2 |23/03/2021 |Installation Ubuntu 20.04, mise à jour, exploitation
+|=======================================================================
