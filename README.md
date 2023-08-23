@@ -1,8 +1,7 @@
-# Eau de Paris - Synchro Remocra
+# Projet Opensource - Synchronisation de données avec l'API Remocra
 
-* **Client** : Eau de Paris
-* **Nom projet Financier** : TMA SIG Open Source - Echanges REMOCRA / WatGIS -Interface REMOCRA
-* **Objet** : Synchronisation des caractéristiques techniques et des disponibilités avec Remocra et suivi de la synchronisation
+* **Financeur** : Eau de Paris
+* **Objet** : SIG Open Source - Echanges REMOCRA / WatGIS -Interface REMOCRA - Synchronisation des caractéristiques techniques et des disponibilités avec Remocra et suivi de la synchronisation
 
 
 
