@@ -27,6 +27,7 @@ RUN echo "fr_FR.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen fr_FR.UTF-8
 
 WORKDIR /app
 COPY docker/app/scripts/entrypoint.sh .
+RUN chmod +x entrypoint.sh
 COPY --from=app-builder /app/app/target/lib/*.jar lib/
 COPY --from=app-builder /app/app/target/syncremocra-app*.jar lib/
 
@@ -34,8 +35,8 @@ COPY --from=app-builder /app/app/target/syncremocra-app*.jar lib/
 ARG UID=1000
 ARG GID=1000
 RUN groupadd -g ${GID} edp \
-    && useradd -u ${UID} -g edp edp \
-    && chown -R edp /app
+  && useradd -u ${UID} -g edp edp \
+  && chown -R edp /app
 USER edp
 
 ENV CONFIG_FILE=/app/config/syncremocra.conf
