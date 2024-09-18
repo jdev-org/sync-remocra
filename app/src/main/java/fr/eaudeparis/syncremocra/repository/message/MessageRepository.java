@@ -481,7 +481,7 @@ public class MessageRepository {
     ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();
     ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
 
-    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm");
     Date dateChangement =
         context
             .select(TRACABILITE_PEI.DATE_MAJ_E)
@@ -862,7 +862,7 @@ public class MessageRepository {
       visite.put("contexte", "NP");
     }
 
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     // Afichage de l'erreur dans les logs
     try {
@@ -903,7 +903,7 @@ public class MessageRepository {
             .where(TRACABILITE_PEI.ID.eq(message.getId_traca_pei()))
             .fetchOneInto(TracabilitePei.class);
 
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     if ((traca.getTypeDerniereVisite() != null
             && traca.getTypeDerniereVisite().toUpperCase().startsWith("NPQP"))
         && !message.getType().toUpperCase().equalsIgnoreCase("MANUELLE")) {
