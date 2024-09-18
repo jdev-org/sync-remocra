@@ -48,6 +48,10 @@ jobs:
           context: . 
           file: docker/app/Dockerfile
           push: true
+          build-args: |
+            UID:"${DOCKER_UID}" 
+            GID:"${DOCKER_GID}"
+            APP_VERSION:"1.43"
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
       
