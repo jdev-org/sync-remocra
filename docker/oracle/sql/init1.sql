@@ -1,4 +1,4 @@
--- sqlplus system/oracle@//127.0.0.1:1521/edpsigdev
+-- sqlplus / as sysdba@//localhost:1521/EDPSIGDEV
 
 create tablespace edp_tabspace 
 datafile 'edp_tabspace.dat' 
