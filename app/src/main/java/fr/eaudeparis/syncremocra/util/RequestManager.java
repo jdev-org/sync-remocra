@@ -11,8 +11,12 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import javax.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RequestManager {
+
+  private static Logger logger = LoggerFactory.getLogger(RequestManager.class);
 
   private final ApiSettings settings;
 
@@ -79,6 +83,8 @@ public class RequestManager {
    */
   public Integer sendRequest(String method, String path, String jsonData)
       throws RequestException, APIConnectionException, APIAuthentException {
+
+    logger.debug("Send request to  " + path + " with content " + jsonData);
     String response = "";
     URL url;
     HttpURLConnection conn = null;
@@ -105,6 +111,7 @@ public class RequestManager {
       }
 
       int codeRetour = conn.getResponseCode();
+      logger.debug("Code return" + codeRetour);
 
       if (codeRetour == HttpURLConnection.HTTP_OK || codeRetour == HttpURLConnection.HTTP_CREATED) {
         return codeRetour;

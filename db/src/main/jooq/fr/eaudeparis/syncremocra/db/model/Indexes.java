@@ -3,25 +3,30 @@
  */
 package fr.eaudeparis.syncremocra.db.model;
 
-
 import fr.eaudeparis.syncremocra.db.model.tables.Erreur;
-
 import org.jooq.Index;
 import org.jooq.OrderField;
 import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 
-
-/**
- * A class modelling indexes of tables in edp.
- */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+/** A class modelling indexes of tables in edp. */
+@SuppressWarnings({"all", "unchecked", "rawtypes"})
 public class Indexes {
 
-    // -------------------------------------------------------------------------
-    // INDEX definitions
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // INDEX definitions
+  // -------------------------------------------------------------------------
 
-    public static final Index FK_ERREUR_MESSAGE_IDX = Internal.createIndex(DSL.name("fk_erreur_message_idx"), Erreur.ERREUR, new OrderField[] { Erreur.ERREUR.MESSAGE }, false);
-    public static final Index FK_ERREUR_TYPE_ERREUR_IDX = Internal.createIndex(DSL.name("fk_erreur_type_erreur_idx"), Erreur.ERREUR, new OrderField[] { Erreur.ERREUR.TYPE_ERREUR }, false);
+  public static final Index FK_ERREUR_MESSAGE_IDX =
+      Internal.createIndex(
+          DSL.name("fk_erreur_message_idx"),
+          Erreur.ERREUR,
+          new OrderField[] {Erreur.ERREUR.MESSAGE},
+          false);
+  public static final Index FK_ERREUR_TYPE_ERREUR_IDX =
+      Internal.createIndex(
+          DSL.name("fk_erreur_type_erreur_idx"),
+          Erreur.ERREUR,
+          new OrderField[] {Erreur.ERREUR.TYPE_ERREUR},
+          false);
 }

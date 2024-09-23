@@ -3,16 +3,13 @@
  */
 package fr.eaudeparis.syncremocra.db.model.tables;
 
-
 import fr.eaudeparis.syncremocra.db.model.Edp;
 import fr.eaudeparis.syncremocra.db.model.Indexes;
 import fr.eaudeparis.syncremocra.db.model.Keys;
 import fr.eaudeparis.syncremocra.db.model.tables.records.ErreurRecord;
-
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
-
 import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Identity;
@@ -29,171 +26,191 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
-
 /**
- * Erreur rencontrée lors du processus global de synchronisation entre REMOCRA 
- * et EDP et pouvant donner lieu à notification
+ * Erreur rencontrée lors du processus global de synchronisation entre REMOCRA et EDP et pouvant
+ * donner lieu à notification
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({"all", "unchecked", "rawtypes"})
 public class Erreur extends TableImpl<ErreurRecord> {
 
-    private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-    /**
-     * The reference instance of <code>edp.erreur</code>
-     */
-    public static final Erreur ERREUR = new Erreur();
+  /** The reference instance of <code>edp.erreur</code> */
+  public static final Erreur ERREUR = new Erreur();
 
-    /**
-     * The class holding records for this type
-     */
-    @Override
-    public Class<ErreurRecord> getRecordType() {
-        return ErreurRecord.class;
-    }
+  /** The class holding records for this type */
+  @Override
+  public Class<ErreurRecord> getRecordType() {
+    return ErreurRecord.class;
+  }
 
-    /**
-     * The column <code>edp.erreur.id</code>. Identifiant interne
-     */
-    public final TableField<ErreurRecord, Integer> ID = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "Identifiant interne");
+  /** The column <code>edp.erreur.id</code>. Identifiant interne */
+  public final TableField<ErreurRecord, Integer> ID =
+      createField(
+          DSL.name("id"),
+          SQLDataType.INTEGER.nullable(false).identity(true),
+          this,
+          "Identifiant interne");
 
-    /**
-     * The column <code>edp.erreur.date</code>. Date et heure de l'erreur
-     */
-    public final TableField<ErreurRecord, LocalDateTime> DATE = createField(DSL.name("date"), SQLDataType.LOCALDATETIME(6).nullable(false).defaultValue(DSL.field("now()", SQLDataType.LOCALDATETIME)), this, "Date et heure de l'erreur");
+  /** The column <code>edp.erreur.date</code>. Date et heure de l'erreur */
+  public final TableField<ErreurRecord, LocalDateTime> DATE =
+      createField(
+          DSL.name("date"),
+          SQLDataType.LOCALDATETIME(6)
+              .nullable(false)
+              .defaultValue(DSL.field("now()", SQLDataType.LOCALDATETIME)),
+          this,
+          "Date et heure de l'erreur");
 
-    /**
-     * The column <code>edp.erreur.description</code>. Description ou message d'erreur retourné par le processus ou l'API
-     */
-    public final TableField<ErreurRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.VARCHAR, this, "Description ou message d'erreur retourné par le processus ou l'API");
+  /**
+   * The column <code>edp.erreur.description</code>. Description ou message d'erreur retourné par le
+   * processus ou l'API
+   */
+  public final TableField<ErreurRecord, String> DESCRIPTION =
+      createField(
+          DSL.name("description"),
+          SQLDataType.VARCHAR,
+          this,
+          "Description ou message d'erreur retourné par le processus ou l'API");
 
-    /**
-     * The column <code>edp.erreur.notifie</code>.
-     */
-    public final TableField<ErreurRecord, Boolean> NOTIFIE = createField(DSL.name("notifie"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field("false", SQLDataType.BOOLEAN)), this, "");
+  /** The column <code>edp.erreur.notifie</code>. */
+  public final TableField<ErreurRecord, Boolean> NOTIFIE =
+      createField(
+          DSL.name("notifie"),
+          SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field("false", SQLDataType.BOOLEAN)),
+          this,
+          "");
 
-    /**
-     * The column <code>edp.erreur.type_erreur</code>. Référence au type d'erreur
-     */
-    public final TableField<ErreurRecord, Long> TYPE_ERREUR = createField(DSL.name("type_erreur"), SQLDataType.BIGINT.nullable(false), this, "Référence au type d'erreur");
+  /** The column <code>edp.erreur.type_erreur</code>. Référence au type d'erreur */
+  public final TableField<ErreurRecord, Long> TYPE_ERREUR =
+      createField(
+          DSL.name("type_erreur"),
+          SQLDataType.BIGINT.nullable(false),
+          this,
+          "Référence au type d'erreur");
 
-    /**
-     * The column <code>edp.erreur.message</code>. Référence au message impliqué dans le processus de PUSH vers Remocra. Permet notament de retrouver le PEI impacté et les informations à synchroniser
-     */
-    public final TableField<ErreurRecord, Long> MESSAGE = createField(DSL.name("message"), SQLDataType.BIGINT, this, "Référence au message impliqué dans le processus de PUSH vers Remocra. Permet notament de retrouver le PEI impacté et les informations à synchroniser");
+  /**
+   * The column <code>edp.erreur.message</code>. Référence au message impliqué dans le processus de
+   * PUSH vers Remocra. Permet notament de retrouver le PEI impacté et les informations à
+   * synchroniser
+   */
+  public final TableField<ErreurRecord, Long> MESSAGE =
+      createField(
+          DSL.name("message"),
+          SQLDataType.BIGINT,
+          this,
+          "Référence au message impliqué dans le processus de PUSH vers Remocra. Permet notament"
+              + " de retrouver le PEI impacté et les informations à synchroniser");
 
-    private Erreur(Name alias, Table<ErreurRecord> aliased) {
-        this(alias, aliased, null);
-    }
+  private Erreur(Name alias, Table<ErreurRecord> aliased) {
+    this(alias, aliased, null);
+  }
 
-    private Erreur(Name alias, Table<ErreurRecord> aliased, Field<?>[] parameters) {
-        super(alias, null, aliased, parameters, DSL.comment("Erreur rencontrée lors du processus global de synchronisation entre REMOCRA et EDP et pouvant donner lieu à notification"), TableOptions.table());
-    }
+  private Erreur(Name alias, Table<ErreurRecord> aliased, Field<?>[] parameters) {
+    super(
+        alias,
+        null,
+        aliased,
+        parameters,
+        DSL.comment(
+            "Erreur rencontrée lors du processus global de synchronisation entre REMOCRA et EDP et"
+                + " pouvant donner lieu à notification"),
+        TableOptions.table());
+  }
 
-    /**
-     * Create an aliased <code>edp.erreur</code> table reference
-     */
-    public Erreur(String alias) {
-        this(DSL.name(alias), ERREUR);
-    }
+  /** Create an aliased <code>edp.erreur</code> table reference */
+  public Erreur(String alias) {
+    this(DSL.name(alias), ERREUR);
+  }
 
-    /**
-     * Create an aliased <code>edp.erreur</code> table reference
-     */
-    public Erreur(Name alias) {
-        this(alias, ERREUR);
-    }
+  /** Create an aliased <code>edp.erreur</code> table reference */
+  public Erreur(Name alias) {
+    this(alias, ERREUR);
+  }
 
-    /**
-     * Create a <code>edp.erreur</code> table reference
-     */
-    public Erreur() {
-        this(DSL.name("erreur"), null);
-    }
+  /** Create a <code>edp.erreur</code> table reference */
+  public Erreur() {
+    this(DSL.name("erreur"), null);
+  }
 
-    public <O extends Record> Erreur(Table<O> child, ForeignKey<O, ErreurRecord> key) {
-        super(child, key, ERREUR);
-    }
+  public <O extends Record> Erreur(Table<O> child, ForeignKey<O, ErreurRecord> key) {
+    super(child, key, ERREUR);
+  }
 
-    @Override
-    public Schema getSchema() {
-        return Edp.EDP;
-    }
+  @Override
+  public Schema getSchema() {
+    return Edp.EDP;
+  }
 
-    @Override
-    public List<Index> getIndexes() {
-        return Arrays.<Index>asList(Indexes.FK_ERREUR_MESSAGE_IDX, Indexes.FK_ERREUR_TYPE_ERREUR_IDX);
-    }
+  @Override
+  public List<Index> getIndexes() {
+    return Arrays.<Index>asList(Indexes.FK_ERREUR_MESSAGE_IDX, Indexes.FK_ERREUR_TYPE_ERREUR_IDX);
+  }
 
-    @Override
-    public Identity<ErreurRecord, Integer> getIdentity() {
-        return (Identity<ErreurRecord, Integer>) super.getIdentity();
-    }
+  @Override
+  public Identity<ErreurRecord, Integer> getIdentity() {
+    return (Identity<ErreurRecord, Integer>) super.getIdentity();
+  }
 
-    @Override
-    public UniqueKey<ErreurRecord> getPrimaryKey() {
-        return Keys.ERREUR_PKEY;
-    }
+  @Override
+  public UniqueKey<ErreurRecord> getPrimaryKey() {
+    return Keys.ERREUR_PKEY;
+  }
 
-    @Override
-    public List<UniqueKey<ErreurRecord>> getKeys() {
-        return Arrays.<UniqueKey<ErreurRecord>>asList(Keys.ERREUR_PKEY);
-    }
+  @Override
+  public List<UniqueKey<ErreurRecord>> getKeys() {
+    return Arrays.<UniqueKey<ErreurRecord>>asList(Keys.ERREUR_PKEY);
+  }
 
-    @Override
-    public List<ForeignKey<ErreurRecord, ?>> getReferences() {
-        return Arrays.<ForeignKey<ErreurRecord, ?>>asList(Keys.ERREUR__FK_ERREUR_TYPE_ERREUR, Keys.ERREUR__FK_ERREUR_MESSAGE);
-    }
+  @Override
+  public List<ForeignKey<ErreurRecord, ?>> getReferences() {
+    return Arrays.<ForeignKey<ErreurRecord, ?>>asList(
+        Keys.ERREUR__FK_ERREUR_TYPE_ERREUR, Keys.ERREUR__FK_ERREUR_MESSAGE);
+  }
 
-    private transient TypeErreur _typeErreur;
-    private transient Message _message;
+  private transient TypeErreur _typeErreur;
+  private transient Message _message;
 
-    public TypeErreur typeErreur() {
-        if (_typeErreur == null)
-            _typeErreur = new TypeErreur(this, Keys.ERREUR__FK_ERREUR_TYPE_ERREUR);
+  public TypeErreur typeErreur() {
+    if (_typeErreur == null) _typeErreur = new TypeErreur(this, Keys.ERREUR__FK_ERREUR_TYPE_ERREUR);
 
-        return _typeErreur;
-    }
+    return _typeErreur;
+  }
 
-    public Message message() {
-        if (_message == null)
-            _message = new Message(this, Keys.ERREUR__FK_ERREUR_MESSAGE);
+  public Message message() {
+    if (_message == null) _message = new Message(this, Keys.ERREUR__FK_ERREUR_MESSAGE);
 
-        return _message;
-    }
+    return _message;
+  }
 
-    @Override
-    public Erreur as(String alias) {
-        return new Erreur(DSL.name(alias), this);
-    }
+  @Override
+  public Erreur as(String alias) {
+    return new Erreur(DSL.name(alias), this);
+  }
 
-    @Override
-    public Erreur as(Name alias) {
-        return new Erreur(alias, this);
-    }
+  @Override
+  public Erreur as(Name alias) {
+    return new Erreur(alias, this);
+  }
 
-    /**
-     * Rename this table
-     */
-    @Override
-    public Erreur rename(String name) {
-        return new Erreur(DSL.name(name), null);
-    }
+  /** Rename this table */
+  @Override
+  public Erreur rename(String name) {
+    return new Erreur(DSL.name(name), null);
+  }
 
-    /**
-     * Rename this table
-     */
-    @Override
-    public Erreur rename(Name name) {
-        return new Erreur(name, null);
-    }
+  /** Rename this table */
+  @Override
+  public Erreur rename(Name name) {
+    return new Erreur(name, null);
+  }
 
-    // -------------------------------------------------------------------------
-    // Row6 type methods
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Row6 type methods
+  // -------------------------------------------------------------------------
 
-    @Override
-    public Row6<Integer, LocalDateTime, String, Boolean, Long, Long> fieldsRow() {
-        return (Row6) super.fieldsRow();
-    }
+  @Override
+  public Row6<Integer, LocalDateTime, String, Boolean, Long, Long> fieldsRow() {
+    return (Row6) super.fieldsRow();
+  }
 }

@@ -3,297 +3,300 @@
  */
 package fr.eaudeparis.syncremocra.db.model.tables.records;
 
-
 import fr.eaudeparis.syncremocra.db.model.tables.TypeErreur;
-
 import org.jooq.Field;
 import org.jooq.Record1;
 import org.jooq.Record6;
 import org.jooq.Row6;
 import org.jooq.impl.UpdatableRecordImpl;
 
-
 /**
- * Typologie des erreurs pouvant être rencontrées lors du processus global 
- * de synchronisation entre REMOCRA et EDP
+ * Typologie des erreurs pouvant être rencontrées lors du processus global de synchronisation entre
+ * REMOCRA et EDP
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
-public class TypeErreurRecord extends UpdatableRecordImpl<TypeErreurRecord> implements Record6<Integer, String, Integer, String, String, String> {
+@SuppressWarnings({"all", "unchecked", "rawtypes"})
+public class TypeErreurRecord extends UpdatableRecordImpl<TypeErreurRecord>
+    implements Record6<Integer, String, Integer, String, String, String> {
 
-    private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-    /**
-     * Setter for <code>edp.type_erreur.id</code>. Identifiant interne
-     */
-    public TypeErreurRecord setId(Integer value) {
-        set(0, value);
-        return this;
-    }
+  /** Setter for <code>edp.type_erreur.id</code>. Identifiant interne */
+  public TypeErreurRecord setId(Integer value) {
+    set(0, value);
+    return this;
+  }
 
-    /**
-     * Getter for <code>edp.type_erreur.id</code>. Identifiant interne
-     */
-    public Integer getId() {
-        return (Integer) get(0);
-    }
+  /** Getter for <code>edp.type_erreur.id</code>. Identifiant interne */
+  public Integer getId() {
+    return (Integer) get(0);
+  }
 
-    /**
-     * Setter for <code>edp.type_erreur.code</code>. Code du type d'erreur. Code identique à celui retourné par l'API REMOCRA dans le cas d'une erreur lié à un appel API
-     */
-    public TypeErreurRecord setCode(String value) {
-        set(1, value);
-        return this;
-    }
+  /**
+   * Setter for <code>edp.type_erreur.code</code>. Code du type d'erreur. Code identique à celui
+   * retourné par l'API REMOCRA dans le cas d'une erreur lié à un appel API
+   */
+  public TypeErreurRecord setCode(String value) {
+    set(1, value);
+    return this;
+  }
 
-    /**
-     * Getter for <code>edp.type_erreur.code</code>. Code du type d'erreur. Code identique à celui retourné par l'API REMOCRA dans le cas d'une erreur lié à un appel API
-     */
-    public String getCode() {
-        return (String) get(1);
-    }
+  /**
+   * Getter for <code>edp.type_erreur.code</code>. Code du type d'erreur. Code identique à celui
+   * retourné par l'API REMOCRA dans le cas d'une erreur lié à un appel API
+   */
+  public String getCode() {
+    return (String) get(1);
+  }
 
-    /**
-     * Setter for <code>edp.type_erreur.iterations</code>. Nombre d'itérations autorisé pour ce type d'erreur. Valable dans le cas des erreurs associés à des messages à traiter ou dans le cas des erreurs système
-     */
-    public TypeErreurRecord setIterations(Integer value) {
-        set(2, value);
-        return this;
-    }
+  /**
+   * Setter for <code>edp.type_erreur.iterations</code>. Nombre d'itérations autorisé pour ce type
+   * d'erreur. Valable dans le cas des erreurs associés à des messages à traiter ou dans le cas des
+   * erreurs système
+   */
+  public TypeErreurRecord setIterations(Integer value) {
+    set(2, value);
+    return this;
+  }
 
-    /**
-     * Getter for <code>edp.type_erreur.iterations</code>. Nombre d'itérations autorisé pour ce type d'erreur. Valable dans le cas des erreurs associés à des messages à traiter ou dans le cas des erreurs système
-     */
-    public Integer getIterations() {
-        return (Integer) get(2);
-    }
+  /**
+   * Getter for <code>edp.type_erreur.iterations</code>. Nombre d'itérations autorisé pour ce type
+   * d'erreur. Valable dans le cas des erreurs associés à des messages à traiter ou dans le cas des
+   * erreurs système
+   */
+  public Integer getIterations() {
+    return (Integer) get(2);
+  }
 
-    /**
-     * Setter for <code>edp.type_erreur.contexte</code>. Contexte permettant d'adresser les erreurs lors de la phase de notification
-     */
-    public TypeErreurRecord setContexte(String value) {
-        set(3, value);
-        return this;
-    }
+  /**
+   * Setter for <code>edp.type_erreur.contexte</code>. Contexte permettant d'adresser les erreurs
+   * lors de la phase de notification
+   */
+  public TypeErreurRecord setContexte(String value) {
+    set(3, value);
+    return this;
+  }
 
-    /**
-     * Getter for <code>edp.type_erreur.contexte</code>. Contexte permettant d'adresser les erreurs lors de la phase de notification
-     */
-    public String getContexte() {
-        return (String) get(3);
-    }
+  /**
+   * Getter for <code>edp.type_erreur.contexte</code>. Contexte permettant d'adresser les erreurs
+   * lors de la phase de notification
+   */
+  public String getContexte() {
+    return (String) get(3);
+  }
 
-    /**
-     * Setter for <code>edp.type_erreur.message_action</code>. Message type permettant d'indiquer au destinataire des erreurs le type d'action à engager
-     */
-    public TypeErreurRecord setMessageAction(String value) {
-        set(4, value);
-        return this;
-    }
+  /**
+   * Setter for <code>edp.type_erreur.message_action</code>. Message type permettant d'indiquer au
+   * destinataire des erreurs le type d'action à engager
+   */
+  public TypeErreurRecord setMessageAction(String value) {
+    set(4, value);
+    return this;
+  }
 
-    /**
-     * Getter for <code>edp.type_erreur.message_action</code>. Message type permettant d'indiquer au destinataire des erreurs le type d'action à engager
-     */
-    public String getMessageAction() {
-        return (String) get(4);
-    }
+  /**
+   * Getter for <code>edp.type_erreur.message_action</code>. Message type permettant d'indiquer au
+   * destinataire des erreurs le type d'action à engager
+   */
+  public String getMessageAction() {
+    return (String) get(4);
+  }
 
-    /**
-     * Setter for <code>edp.type_erreur.message_erreur</code>.
-     */
-    public TypeErreurRecord setMessageErreur(String value) {
-        set(5, value);
-        return this;
-    }
+  /** Setter for <code>edp.type_erreur.message_erreur</code>. */
+  public TypeErreurRecord setMessageErreur(String value) {
+    set(5, value);
+    return this;
+  }
 
-    /**
-     * Getter for <code>edp.type_erreur.message_erreur</code>.
-     */
-    public String getMessageErreur() {
-        return (String) get(5);
-    }
+  /** Getter for <code>edp.type_erreur.message_erreur</code>. */
+  public String getMessageErreur() {
+    return (String) get(5);
+  }
 
-    // -------------------------------------------------------------------------
-    // Primary key information
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Primary key information
+  // -------------------------------------------------------------------------
 
-    @Override
-    public Record1<Integer> key() {
-        return (Record1) super.key();
-    }
+  @Override
+  public Record1<Integer> key() {
+    return (Record1) super.key();
+  }
 
-    // -------------------------------------------------------------------------
-    // Record6 type implementation
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Record6 type implementation
+  // -------------------------------------------------------------------------
 
-    @Override
-    public Row6<Integer, String, Integer, String, String, String> fieldsRow() {
-        return (Row6) super.fieldsRow();
-    }
+  @Override
+  public Row6<Integer, String, Integer, String, String, String> fieldsRow() {
+    return (Row6) super.fieldsRow();
+  }
 
-    @Override
-    public Row6<Integer, String, Integer, String, String, String> valuesRow() {
-        return (Row6) super.valuesRow();
-    }
+  @Override
+  public Row6<Integer, String, Integer, String, String, String> valuesRow() {
+    return (Row6) super.valuesRow();
+  }
 
-    @Override
-    public Field<Integer> field1() {
-        return TypeErreur.TYPE_ERREUR.ID;
-    }
+  @Override
+  public Field<Integer> field1() {
+    return TypeErreur.TYPE_ERREUR.ID;
+  }
 
-    @Override
-    public Field<String> field2() {
-        return TypeErreur.TYPE_ERREUR.CODE;
-    }
+  @Override
+  public Field<String> field2() {
+    return TypeErreur.TYPE_ERREUR.CODE;
+  }
 
-    @Override
-    public Field<Integer> field3() {
-        return TypeErreur.TYPE_ERREUR.ITERATIONS;
-    }
+  @Override
+  public Field<Integer> field3() {
+    return TypeErreur.TYPE_ERREUR.ITERATIONS;
+  }
 
-    @Override
-    public Field<String> field4() {
-        return TypeErreur.TYPE_ERREUR.CONTEXTE;
-    }
+  @Override
+  public Field<String> field4() {
+    return TypeErreur.TYPE_ERREUR.CONTEXTE;
+  }
 
-    @Override
-    public Field<String> field5() {
-        return TypeErreur.TYPE_ERREUR.MESSAGE_ACTION;
-    }
+  @Override
+  public Field<String> field5() {
+    return TypeErreur.TYPE_ERREUR.MESSAGE_ACTION;
+  }
 
-    @Override
-    public Field<String> field6() {
-        return TypeErreur.TYPE_ERREUR.MESSAGE_ERREUR;
-    }
+  @Override
+  public Field<String> field6() {
+    return TypeErreur.TYPE_ERREUR.MESSAGE_ERREUR;
+  }
 
-    @Override
-    public Integer component1() {
-        return getId();
-    }
+  @Override
+  public Integer component1() {
+    return getId();
+  }
 
-    @Override
-    public String component2() {
-        return getCode();
-    }
+  @Override
+  public String component2() {
+    return getCode();
+  }
 
-    @Override
-    public Integer component3() {
-        return getIterations();
-    }
+  @Override
+  public Integer component3() {
+    return getIterations();
+  }
 
-    @Override
-    public String component4() {
-        return getContexte();
-    }
+  @Override
+  public String component4() {
+    return getContexte();
+  }
 
-    @Override
-    public String component5() {
-        return getMessageAction();
-    }
+  @Override
+  public String component5() {
+    return getMessageAction();
+  }
 
-    @Override
-    public String component6() {
-        return getMessageErreur();
-    }
+  @Override
+  public String component6() {
+    return getMessageErreur();
+  }
 
-    @Override
-    public Integer value1() {
-        return getId();
-    }
+  @Override
+  public Integer value1() {
+    return getId();
+  }
 
-    @Override
-    public String value2() {
-        return getCode();
-    }
+  @Override
+  public String value2() {
+    return getCode();
+  }
 
-    @Override
-    public Integer value3() {
-        return getIterations();
-    }
+  @Override
+  public Integer value3() {
+    return getIterations();
+  }
 
-    @Override
-    public String value4() {
-        return getContexte();
-    }
+  @Override
+  public String value4() {
+    return getContexte();
+  }
 
-    @Override
-    public String value5() {
-        return getMessageAction();
-    }
+  @Override
+  public String value5() {
+    return getMessageAction();
+  }
 
-    @Override
-    public String value6() {
-        return getMessageErreur();
-    }
+  @Override
+  public String value6() {
+    return getMessageErreur();
+  }
 
-    @Override
-    public TypeErreurRecord value1(Integer value) {
-        setId(value);
-        return this;
-    }
+  @Override
+  public TypeErreurRecord value1(Integer value) {
+    setId(value);
+    return this;
+  }
 
-    @Override
-    public TypeErreurRecord value2(String value) {
-        setCode(value);
-        return this;
-    }
+  @Override
+  public TypeErreurRecord value2(String value) {
+    setCode(value);
+    return this;
+  }
 
-    @Override
-    public TypeErreurRecord value3(Integer value) {
-        setIterations(value);
-        return this;
-    }
+  @Override
+  public TypeErreurRecord value3(Integer value) {
+    setIterations(value);
+    return this;
+  }
 
-    @Override
-    public TypeErreurRecord value4(String value) {
-        setContexte(value);
-        return this;
-    }
+  @Override
+  public TypeErreurRecord value4(String value) {
+    setContexte(value);
+    return this;
+  }
 
-    @Override
-    public TypeErreurRecord value5(String value) {
-        setMessageAction(value);
-        return this;
-    }
+  @Override
+  public TypeErreurRecord value5(String value) {
+    setMessageAction(value);
+    return this;
+  }
 
-    @Override
-    public TypeErreurRecord value6(String value) {
-        setMessageErreur(value);
-        return this;
-    }
+  @Override
+  public TypeErreurRecord value6(String value) {
+    setMessageErreur(value);
+    return this;
+  }
 
-    @Override
-    public TypeErreurRecord values(Integer value1, String value2, Integer value3, String value4, String value5, String value6) {
-        value1(value1);
-        value2(value2);
-        value3(value3);
-        value4(value4);
-        value5(value5);
-        value6(value6);
-        return this;
-    }
+  @Override
+  public TypeErreurRecord values(
+      Integer value1, String value2, Integer value3, String value4, String value5, String value6) {
+    value1(value1);
+    value2(value2);
+    value3(value3);
+    value4(value4);
+    value5(value5);
+    value6(value6);
+    return this;
+  }
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // Constructors
+  // -------------------------------------------------------------------------
 
-    /**
-     * Create a detached TypeErreurRecord
-     */
-    public TypeErreurRecord() {
-        super(TypeErreur.TYPE_ERREUR);
-    }
+  /** Create a detached TypeErreurRecord */
+  public TypeErreurRecord() {
+    super(TypeErreur.TYPE_ERREUR);
+  }
 
-    /**
-     * Create a detached, initialised TypeErreurRecord
-     */
-    public TypeErreurRecord(Integer id, String code, Integer iterations, String contexte, String messageAction, String messageErreur) {
-        super(TypeErreur.TYPE_ERREUR);
+  /** Create a detached, initialised TypeErreurRecord */
+  public TypeErreurRecord(
+      Integer id,
+      String code,
+      Integer iterations,
+      String contexte,
+      String messageAction,
+      String messageErreur) {
+    super(TypeErreur.TYPE_ERREUR);
 
-        setId(id);
-        setCode(code);
-        setIterations(iterations);
-        setContexte(contexte);
-        setMessageAction(messageAction);
-        setMessageErreur(messageErreur);
-    }
+    setId(id);
+    setCode(code);
+    setIterations(iterations);
+    setContexte(contexte);
+    setMessageAction(messageAction);
+    setMessageErreur(messageErreur);
+  }
 }
