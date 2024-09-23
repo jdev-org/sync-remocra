@@ -59,6 +59,7 @@ public class RequestManager {
         throw new IOException();
       }
     } catch (IOException e) {
+      logger.warn("Error  : ", e);
       // Impossible de contacter l'API
       this.erreurRepository.addError(
           "0003", "Impossible d'établir une connexion avec l'API Remocra", null);
@@ -131,6 +132,7 @@ public class RequestManager {
         throw new RequestException(conn.getResponseCode(), errorCode, response);
       }
     } catch (IOException e) {
+      logger.warn("Error  : ", e);
       e.printStackTrace();
     } finally {
       if (conn != null) {
@@ -169,6 +171,8 @@ public class RequestManager {
         }
       }
 
+      logger.info("Send request to  : " + path);
+
       url = new URL(settings.host() + path);
       conn = (HttpURLConnection) url.openConnection();
 
@@ -188,6 +192,7 @@ public class RequestManager {
           content.append(inputLine);
         }
         in.close();
+        logger.debug("get response  : " + content.toString());
         return content.toString();
       } else {
         StringBuilder sb = new StringBuilder();
@@ -204,6 +209,7 @@ public class RequestManager {
         throw new RequestException(conn.getResponseCode(), errorCode, response);
       }
     } catch (IOException e) {
+      logger.warn("Error  : ", e);
       e.printStackTrace();
     } finally {
       if (conn != null) {
