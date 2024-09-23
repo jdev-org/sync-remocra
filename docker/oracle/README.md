@@ -1,0 +1,1 @@
+sqlplus / as sysdba@//localhost:1521/EDPSIGDEV

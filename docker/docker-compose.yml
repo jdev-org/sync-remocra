@@ -31,17 +31,23 @@ services:
           - db.syncremocra.eaudeparis.fr
 
   ora:
-    image: absolutapps/oracle-12c-ee
+    image: doctorkirk/oracle-19c
     container_name: edp-ora
     environment:
-      ORACLE_SID: edpsigdev
-      SERVICE_NAME: edpsigdev
+      ORACLE_SID: EDPSIGDEV
+      ORACLE_PWD: Edps1gdev-
+      INIT_SGA_SIZE: 3000
+      INIT_PGA_SIZE: 1000
     volumes:
-      - .docker/oracle/data:/u01/app/oracle
-      - ./oracle.init.d:/oracle.init.d:ro
+      - .docker/oracle/data:/opt/oracle/oradata \
+      - ./oracle:/home/oracle/initdb/
     ports:
       - "8070:8080"
       - "1521:1521"
+    ulimits:
+      nofile:
+        soft: "65536"
+        hard: "65536"
     logging:
       options:
         max-size: "10k"
