@@ -91,6 +91,8 @@ public class MessageRepository {
     this.parametresRepository.set("FLAG_STATUS_PUSHWORKER", "EN COURS");
     List<MessageModel> messagesATraiter = this.getListeMessages();
 
+    logger.info("Traitement des messages : " + messagesATraiter.size() + " a traiter");
+
     boolean continuer = true;
     for (int i = 0; i < messagesATraiter.size() && continuer; i++) {
       MessageModel message = messagesATraiter.get(i);
