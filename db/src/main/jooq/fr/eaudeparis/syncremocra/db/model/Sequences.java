@@ -3,75 +3,167 @@
  */
 package fr.eaudeparis.syncremocra.db.model;
 
-
 import org.jooq.Sequence;
 import org.jooq.impl.Internal;
 import org.jooq.impl.SQLDataType;
 
-
-/**
- * Convenience access to all sequences in edp.
- */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+/** Convenience access to all sequences in edp. */
+@SuppressWarnings({"all", "unchecked", "rawtypes"})
 public class Sequences {
 
-    /**
-     * The sequence <code>edp.erreur_id_seq</code>
-     */
-    public static final Sequence<Integer> ERREUR_ID_SEQ = Internal.createSequence("erreur_id_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.erreur_id_seq</code> */
+  public static final Sequence<Integer> ERREUR_ID_SEQ =
+      Internal.createSequence(
+          "erreur_id_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.message_id_seq</code>
-     */
-    public static final Sequence<Integer> MESSAGE_ID_SEQ = Internal.createSequence("message_id_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.message_id_seq</code> */
+  public static final Sequence<Integer> MESSAGE_ID_SEQ =
+      Internal.createSequence(
+          "message_id_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.pull_hydrant_anomalies_id_seq</code>
-     */
-    public static final Sequence<Integer> PULL_HYDRANT_ANOMALIES_ID_SEQ = Internal.createSequence("pull_hydrant_anomalies_id_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.pull_hydrant_anomalies_id_seq</code> */
+  public static final Sequence<Integer> PULL_HYDRANT_ANOMALIES_ID_SEQ =
+      Internal.createSequence(
+          "pull_hydrant_anomalies_id_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.pull_hydrant_id_seq</code>
-     */
-    public static final Sequence<Integer> PULL_HYDRANT_ID_SEQ = Internal.createSequence("pull_hydrant_id_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.pull_hydrant_id_seq</code> */
+  public static final Sequence<Integer> PULL_HYDRANT_ID_SEQ =
+      Internal.createSequence(
+          "pull_hydrant_id_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.pull_hydrant_visite_id_seq</code>
-     */
-    public static final Sequence<Integer> PULL_HYDRANT_VISITE_ID_SEQ = Internal.createSequence("pull_hydrant_visite_id_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.pull_hydrant_visite_id_seq</code> */
+  public static final Sequence<Integer> PULL_HYDRANT_VISITE_ID_SEQ =
+      Internal.createSequence(
+          "pull_hydrant_visite_id_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.pull_message_id_seq</code>
-     */
-    public static final Sequence<Integer> PULL_MESSAGE_ID_SEQ = Internal.createSequence("pull_message_id_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.pull_message_id_seq</code> */
+  public static final Sequence<Integer> PULL_MESSAGE_ID_SEQ =
+      Internal.createSequence(
+          "pull_message_id_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.tracabilite_indispo_id_seq</code>
-     */
-    public static final Sequence<Integer> TRACABILITE_INDISPO_ID_SEQ = Internal.createSequence("tracabilite_indispo_id_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.tracabilite_indispo_id_seq</code> */
+  public static final Sequence<Integer> TRACABILITE_INDISPO_ID_SEQ =
+      Internal.createSequence(
+          "tracabilite_indispo_id_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.tracabilite_pei_id_seq</code>
-     */
-    public static final Sequence<Integer> TRACABILITE_PEI_ID_SEQ = Internal.createSequence("tracabilite_pei_id_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.tracabilite_pei_id_seq</code> */
+  public static final Sequence<Integer> TRACABILITE_PEI_ID_SEQ =
+      Internal.createSequence(
+          "tracabilite_pei_id_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.type_erreur_id_seq</code>
-     */
-    public static final Sequence<Integer> TYPE_ERREUR_ID_SEQ = Internal.createSequence("type_erreur_id_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.type_erreur_id_seq</code> */
+  public static final Sequence<Integer> TYPE_ERREUR_ID_SEQ =
+      Internal.createSequence(
+          "type_erreur_id_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.vue_pei_edp_remocra_gid_edp_seq</code>
-     */
-    public static final Sequence<Integer> VUE_PEI_EDP_REMOCRA_GID_EDP_SEQ = Internal.createSequence("vue_pei_edp_remocra_gid_edp_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.vue_pei_edp_remocra_gid_edp_seq</code> */
+  public static final Sequence<Integer> VUE_PEI_EDP_REMOCRA_GID_EDP_SEQ =
+      Internal.createSequence(
+          "vue_pei_edp_remocra_gid_edp_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.vue_pei_motif_indispo_edp_remocra_gid_edp_seq</code>
-     */
-    public static final Sequence<Integer> VUE_PEI_MOTIF_INDISPO_EDP_REMOCRA_GID_EDP_SEQ = Internal.createSequence("vue_pei_motif_indispo_edp_remocra_gid_edp_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.vue_pei_motif_indispo_edp_remocra_gid_edp_seq</code> */
+  public static final Sequence<Integer> VUE_PEI_MOTIF_INDISPO_EDP_REMOCRA_GID_EDP_SEQ =
+      Internal.createSequence(
+          "vue_pei_motif_indispo_edp_remocra_gid_edp_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 
-    /**
-     * The sequence <code>edp.vue_visite_gid_edp_seq</code>
-     */
-    public static final Sequence<Integer> VUE_VISITE_GID_EDP_SEQ = Internal.createSequence("vue_visite_gid_edp_seq", Edp.EDP, SQLDataType.INTEGER.nullable(false), null, null, null, null, false, null);
+  /** The sequence <code>edp.vue_visite_gid_edp_seq</code> */
+  public static final Sequence<Integer> VUE_VISITE_GID_EDP_SEQ =
+      Internal.createSequence(
+          "vue_visite_gid_edp_seq",
+          Edp.EDP,
+          SQLDataType.INTEGER.nullable(false),
+          null,
+          null,
+          null,
+          null,
+          false,
+          null);
 }

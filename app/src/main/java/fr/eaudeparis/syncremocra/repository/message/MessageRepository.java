@@ -112,6 +112,7 @@ public class MessageRepository {
       try {
 
         if ("INDISPO_TEMPORAIRE".equalsIgnoreCase(message.getType())) {
+          logger.debug("Traitement INDISPO_TEMPORAIRE " + message.getId());
           ObjectNode dataIndispo = this.traiterMessageVisite(message, reference);
           if (dataIndispo != null) {
             data = dataIndispo.get("data").deepCopy();
@@ -121,14 +122,17 @@ public class MessageRepository {
           }
 
         } else if ("CARACTERISTIQUES".equalsIgnoreCase(message.getType())) {
+          logger.debug("Traitement CARACTERISTIQUES " + message.getId());
           data = this.traiterMessageCaracteristiques(message, reference);
           path = "/api/deci/pei/" + reference + "/caracteristiques";
           methode = "PUT";
         } else if ("SPECIFIQUE".equalsIgnoreCase(message.getType())) {
+          logger.debug("Traitement SPECIFIQUE " + message.getId());
           data = this.traiterMessageSpecifique(message, reference);
           path = "/api/deci/pei/" + reference + "/visites";
           methode = "POST";
         } else if ("MANUELLE".equalsIgnoreCase(message.getType())) {
+          logger.debug("Traitement MANUELLE " + message.getId());
           data = this.traiterMessageManuelle(message, reference);
           path = "/api/deci/pei/" + reference + "/visites";
           methode = "POST";
@@ -189,11 +193,13 @@ public class MessageRepository {
         }
 
       } catch (JsonProcessingException e) {
+        logger.error(
+            "Message " + message.getId() + " erreur de création du contenu de la requete", e);
         e.printStackTrace();
       } catch (RequestException
           | InternalException e) { // Erreur renvoyée par l'API ou erreur interne (hors pb authent)
 
-        this.logger.info("Message " + message.getId() + " en erreur");
+        logger.error("Message " + message.getId() + " erreur echange API", e);
 
         boolean rejouer = false;
 
@@ -207,7 +213,8 @@ public class MessageRepository {
           messageErreur = ((RequestException) e).getMessage();
         }
 
-        // Selon l'erreur rencontrée, on regarde le nombre de synchro max pour déterminer si le
+        // Selon l'erreur rencontrée, on regarde le nombre de synchro max pour
+        // déterminer si le
         // message doit être rejoué
         if (codeErreur != null) {
           TypeErreurModel typeErreur =
@@ -247,7 +254,8 @@ public class MessageRepository {
 
           logger.info("Erreur de connexion à l'API détectée, fin du traitement des messages");
           logger.info(
-              "Une nouvelle tentative de synchronisation sera effectuée lors du prochain déclenchement du PushWorker");
+              "Une nouvelle tentative de synchronisation sera effectuée lors du prochain"
+                  + " déclenchement du PushWorker");
         } else if (e instanceof APIAuthentException) {
 
           typeErreur = "0200";
@@ -270,7 +278,8 @@ public class MessageRepository {
                 .fetchOneInto(String.class);
         continuer = false;
 
-        // Pour ce PEi et tous les PEI restants, on augmente le nombre de synchronisations, et on
+        // Pour ce PEi et tous les PEI restants, on augmente le nombre de
+        // synchronisations, et on
         // détermine si on peut les rejouer
         for (int j = i; j < messagesATraiter.size(); j++) {
           MessageModel m = messagesATraiter.get(j);
@@ -291,7 +300,8 @@ public class MessageRepository {
           }
         }
         logger.info(
-            "Traitement terminé, une erreur a été rencontrée; mise en erreur des messages restants");
+            "Traitement terminé, une erreur a été rencontrée; mise en erreur des messages"
+                + " restants");
       }
     }
     this.parametresRepository.set("FLAG_STATUS_PUSHWORKER", "TERMINE");
@@ -310,6 +320,8 @@ public class MessageRepository {
   private ObjectNode traiterMessageVisite(MessageModel message, String reference)
       throws APIConnectionException, RequestException, APIAuthentException,
           JsonProcessingException {
+
+    logger.info("Traitement visite " + message.getId_traca_pei());
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode indispoTemp = mapper.createObjectNode();
 
@@ -327,7 +339,8 @@ public class MessageRepository {
     String indispoEnCours =
         this.requestManager.sendGetRequest("/api/deci/indispoTemporaire", params);
 
-    // Si Indisponible, on créé une indispo temporaire s'il n'en existe pas déjà une sur ce PEI
+    // Si Indisponible, on créé une indispo temporaire s'il n'en existe pas déjà une
+    // sur ce PEI
     if ("Indisponible".equalsIgnoreCase(traca.getEtat())) {
       if (indispoEnCours.length() <= 2) { // Null ou tableau vide
         logger.info("PEI " + reference + " indisponible - Création d'une indispo temporaire EDP");
@@ -360,7 +373,8 @@ public class MessageRepository {
         logger.info(
             "PEI "
                 + reference
-                + " indisponible - Indispo temporaire EDP déjà présente, reprise des nouveaux motifs d'indispo");
+                + " indisponible - Indispo temporaire EDP déjà présente, reprise des nouveaux"
+                + " motifs d'indispo");
 
         this.remonteeMotifsIndispo(message, reference);
 
@@ -382,7 +396,8 @@ public class MessageRepository {
             this.requestManager.sendGetRequest("/api/deci/indispoTemporaire", params);
 
         if (indispoPlanifie.length()
-            > 2) { // S'il existe une indispo planifie, on vérifie si elle aurait dû être en cours"
+            > 2) { // S'il existe une indispo planifie, on vérifie si elle aurait dû être en
+          // cours"
 
           TypeReference<ArrayList<Map<String, Object>>> typeRef =
               new TypeReference<ArrayList<Map<String, Object>>>() {};
@@ -394,20 +409,24 @@ public class MessageRepository {
                   dataIndispoPlanifie.get(0), "date_debut", "yyyy-MM-dd HH:mm");
           if (dateDebut.isAfter(traca.getDateTraca())) {
 
-            // si la date de début n'a pas commencé, il est normal qu'on ai cette IT planifiée
+            // si la date de début n'a pas commencé, il est normal qu'on ai cette IT
+            // planifiée
             // message traité
 
             traiterIndispoTemporaire(message, reference);
 
           } else {
-            // sinon on indique dans les logs qu'il faut laisser le temps au traitement REMOcRA de
-            // passer le PEI en indispo (IT) et on laisse le message a traiter pour la prochaine
+            // sinon on indique dans les logs qu'il faut laisser le temps au traitement
+            // REMOcRA de
+            // passer le PEI en indispo (IT) et on laisse le message a traiter pour la
+            // prochaine
             // fois
             logger.info(
                 "PEI "
                     + reference
-                    + " : Une indisponibilité temporaire est présente mais n'a pas encore commencée."
-                    + " Attente de la mise en indisponibilité côté Remocra avant de réessayer de traiter ce message");
+                    + " : Une indisponibilité temporaire est présente mais n'a pas encore"
+                    + " commencée. Attente de la mise en indisponibilité côté Remocra avant de"
+                    + " réessayer de traiter ce message");
           }
         } else {
 
@@ -519,11 +538,13 @@ public class MessageRepository {
                 .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(traca.getReference()))
                 .fetchInto(String.class);
 
-        // "ARRET EAU" est une anomalie qui ne donne pas lieu à une visite dans REMOcRA si elle est
+        // "ARRET EAU" est une anomalie qui ne donne pas lieu à une visite dans REMOcRA
+        // si elle est
         // la seule anomalie
         if (motifIndispo.size() == 1 && motifIndispo.contains("ARRET EAU")) {
           logger.info(
-              "Mise en disponible avec pour seul motif actif ARRET EAU : pas de création de visite");
+              "Mise en disponible avec pour seul motif actif ARRET EAU : pas de création de"
+                  + " visite");
           context
               .deleteFrom(MOTIF_INDISPO_ACTIF)
               .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(traca.getReference()))
@@ -542,7 +563,8 @@ public class MessageRepository {
           for (String code : motifIndispo) {
             anomaliesAControler.add(code);
           }
-          // ici, on ne return pas le null pour continuer l'execution et descendre à la création de
+          // ici, on ne return pas le null pour continuer l'execution et descendre à la
+          // création de
           // la visite
 
         }
@@ -559,7 +581,8 @@ public class MessageRepository {
                 .and(TRACABILITE_INDISPO.STATUT_MOTIF_INDISPO.eq("EN COURS"))
                 .fetchInto(String.class);
 
-        // Récupération des motifs d'indispo actuellement actifs ajoutés via une précédente
+        // Récupération des motifs d'indispo actuellement actifs ajoutés via une
+        // précédente
         // synchronisation
         List<String> indispoActif =
             context
@@ -582,7 +605,8 @@ public class MessageRepository {
           }
         }
 
-        // Si ARRET EAU en cours, on l'ajoute (ou le maintient) dans la liste des motifs d'indispo
+        // Si ARRET EAU en cours, on l'ajoute (ou le maintient) dans la liste des motifs
+        // d'indispo
         // actifs.
         if (anomaliesAjoutees.contains("ARRET EAU")
             || (indispoActif.contains("ARRET EAU") && !anomaliesSupprimees.contains("ARRET EAU"))) {
@@ -618,7 +642,8 @@ public class MessageRepository {
           return null;
         }
 
-        // Si on détecte d'autres modifs sur des motifs autre que ARRET EAU, on créé une visite dans
+        // Si on détecte d'autres modifs sur des motifs autre que ARRET EAU, on créé une
+        // visite dans
         // Remocra pour les remonter
         logger.info("Modification autre que uniquement ARRET EAU; création de visite");
 
@@ -628,7 +653,8 @@ public class MessageRepository {
           anomaliesAConstater.add(code);
         }
 
-        // On ajoute en contrôle les anomalies supprimées (aka constatées lors de la dernière
+        // On ajoute en contrôle les anomalies supprimées (aka constatées lors de la
+        // dernière
         // synchro et pas indiquées lors de cette synchro)
         for (String code : indispoActif) {
           if (!anomaliesAControler.contains(code) && !"ARRET EAU".equalsIgnoreCase(code)) {
@@ -680,7 +706,8 @@ public class MessageRepository {
           this.requestManager.sendRequest("POST", "/api/deci/pei/" + reference + "/visites", json);
       logger.info("Disponibilité: création d'une visite (retour : " + codeRetour + ")");
 
-      // On modifie les motifs d'indispo actifs APRES la création de visite et si elle s'est bien
+      // On modifie les motifs d'indispo actifs APRES la création de visite et si elle
+      // s'est bien
       // passé
       // pour éviter corrompre le suivi en cas d'échec de la requête
       if (codeRetour == 201) {
@@ -756,7 +783,8 @@ public class MessageRepository {
               .where(REFERENTIEL_HYDRANT_DIAMETRES.CODE_EDP.eq(String.valueOf(traca.getDiametre())))
               .fetchOneInto(String.class);
 
-      // Code de diamètre fourni null ou ne possédant pas de correspondance dans le référentiel
+      // Code de diamètre fourni null ou ne possédant pas de correspondance dans le
+      // référentiel
       if (codeDiametre == null) {
         TypeErreur typeErreur =
             context
