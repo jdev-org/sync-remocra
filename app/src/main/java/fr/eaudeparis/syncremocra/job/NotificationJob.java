@@ -11,7 +11,6 @@ import fr.eaudeparis.syncremocra.db.model.tables.pojos.VueErreurToNotify;
 import fr.eaudeparis.syncremocra.mail.MailUtil;
 import fr.eaudeparis.syncremocra.notification.NotificationSettings;
 import fr.eaudeparis.syncremocra.repository.erreur.ErreurRepository;
-import fr.eaudeparis.syncremocra.repository.message.model.MessageModel;
 import fr.eaudeparis.syncremocra.util.JSONUtil;
 import fr.eaudeparis.syncremocra.util.RequestManager;
 import java.io.*;
@@ -243,34 +242,6 @@ public class NotificationJob implements Job {
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-    }
-  }
-
-  public void sendNotifConnexionOk(MessageModel message) {
-
-    try {
-
-      TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
-      String objet = "La synchro avec REMOCRA est à nouveau opérationnelle";
-
-      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-      String msg =
-          "<p>"
-              + "La synchronisation avec REMOCRA est à nouveau opérationnelle"
-              + "<br />"
-              + "Les messages en attente vont être mis à jour"
-              + "</p>";
-
-      this.send(this.getListContextKeyEmail().get("REMOCRA_SYSTEME"), objet, msg);
-      logger.info("L'api est à nouveau joignable un mail pour prévenir va partir");
-      context
-          .update(MESSAGE)
-          .set(MESSAGE.STATUT, "TRAITE")
-          .where(MESSAGE.ID.eq(message.getId()))
-          .execute();
-
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 }

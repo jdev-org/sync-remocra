@@ -11,12 +11,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import javax.inject.Inject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RequestManager {
-
-  private static Logger logger = LoggerFactory.getLogger(RequestManager.class);
 
   private final ApiSettings settings;
 
@@ -50,16 +46,12 @@ public class RequestManager {
 
       if (codeRetour != null && conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
         return conn.getHeaderField("Authorization");
-      } else if (codeRetour != null
-          && conn.getResponseCode() == HttpURLConnection.HTTP_UNAUTHORIZED) {
+      } else {
         // Erreur authentification à l'API
         this.erreurRepository.addError("0200", "Authentification refusée à l'API Remocra", null);
         throw new APIAuthentException();
-      } else {
-        throw new IOException();
       }
     } catch (IOException e) {
-      logger.warn("Error  : ", e);
       // Impossible de contacter l'API
       this.erreurRepository.addError(
           "0003", "Impossible d'établir une connexion avec l'API Remocra", null);
@@ -84,8 +76,6 @@ public class RequestManager {
    */
   public Integer sendRequest(String method, String path, String jsonData)
       throws RequestException, APIConnectionException, APIAuthentException {
-
-    logger.debug("Send request to  " + path + " with content " + jsonData);
     String response = "";
     URL url;
     HttpURLConnection conn = null;
@@ -112,7 +102,6 @@ public class RequestManager {
       }
 
       int codeRetour = conn.getResponseCode();
-      logger.debug("Code return" + codeRetour);
 
       if (codeRetour == HttpURLConnection.HTTP_OK || codeRetour == HttpURLConnection.HTTP_CREATED) {
         return codeRetour;
@@ -132,7 +121,6 @@ public class RequestManager {
         throw new RequestException(conn.getResponseCode(), errorCode, response);
       }
     } catch (IOException e) {
-      logger.warn("Error  : ", e);
       e.printStackTrace();
     } finally {
       if (conn != null) {
@@ -171,8 +159,6 @@ public class RequestManager {
         }
       }
 
-      logger.info("Send request to  : " + path);
-
       url = new URL(settings.host() + path);
       conn = (HttpURLConnection) url.openConnection();
 
@@ -192,7 +178,6 @@ public class RequestManager {
           content.append(inputLine);
         }
         in.close();
-        logger.debug("get response  : " + content.toString());
         return content.toString();
       } else {
         StringBuilder sb = new StringBuilder();
@@ -209,7 +194,6 @@ public class RequestManager {
         throw new RequestException(conn.getResponseCode(), errorCode, response);
       }
     } catch (IOException e) {
-      logger.warn("Error  : ", e);
       e.printStackTrace();
     } finally {
       if (conn != null) {

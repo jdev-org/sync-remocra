@@ -3,81 +3,37 @@
  */
 package fr.eaudeparis.syncremocra.db.model;
 
+
 import fr.eaudeparis.syncremocra.db.model.routines.Changedatacapture;
-import fr.eaudeparis.syncremocra.db.model.routines.TraiterSpecifique;
-import java.time.LocalDateTime;
+
 import org.jooq.Configuration;
 import org.jooq.Field;
 
-/** Convenience access to all stored procedures and functions in edp. */
-@SuppressWarnings({"all", "unchecked", "rawtypes"})
+
+/**
+ * Convenience access to all stored procedures and functions in edp.
+ */
+@SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Routines {
 
-  /** Call <code>edp.changedatacapture</code> */
-  public static Integer changedatacapture(Configuration configuration) {
-    Changedatacapture f = new Changedatacapture();
+    /**
+     * Call <code>edp.changedatacapture</code>
+     */
+    public static Integer changedatacapture(
+          Configuration configuration
+    ) {
+        Changedatacapture f = new Changedatacapture();
 
-    f.execute(configuration);
-    return f.getReturnValue();
-  }
+        f.execute(configuration);
+        return f.getReturnValue();
+    }
 
-  /** Get <code>edp.changedatacapture</code> as a field. */
-  public static Field<Integer> changedatacapture() {
-    Changedatacapture f = new Changedatacapture();
+    /**
+     * Get <code>edp.changedatacapture</code> as a field.
+     */
+    public static Field<Integer> changedatacapture() {
+        Changedatacapture f = new Changedatacapture();
 
-    return f.asField();
-  }
-
-  /** Call <code>edp.traiter_specifique</code> */
-  public static LocalDateTime traiterSpecifique(
-      Configuration configuration,
-      LocalDateTime datelaplusrecente,
-      LocalDateTime derniereremontee,
-      LocalDateTime currentExecution,
-      String paramReference,
-      String paramType) {
-    TraiterSpecifique f = new TraiterSpecifique();
-    f.setDatelaplusrecente(datelaplusrecente);
-    f.setDerniereremontee(derniereremontee);
-    f.setCurrentExecution(currentExecution);
-    f.setParamReference(paramReference);
-    f.setParamType(paramType);
-
-    f.execute(configuration);
-    return f.getReturnValue();
-  }
-
-  /** Get <code>edp.traiter_specifique</code> as a field. */
-  public static Field<LocalDateTime> traiterSpecifique(
-      LocalDateTime datelaplusrecente,
-      LocalDateTime derniereremontee,
-      LocalDateTime currentExecution,
-      String paramReference,
-      String paramType) {
-    TraiterSpecifique f = new TraiterSpecifique();
-    f.setDatelaplusrecente(datelaplusrecente);
-    f.setDerniereremontee(derniereremontee);
-    f.setCurrentExecution(currentExecution);
-    f.setParamReference(paramReference);
-    f.setParamType(paramType);
-
-    return f.asField();
-  }
-
-  /** Get <code>edp.traiter_specifique</code> as a field. */
-  public static Field<LocalDateTime> traiterSpecifique(
-      Field<LocalDateTime> datelaplusrecente,
-      Field<LocalDateTime> derniereremontee,
-      Field<LocalDateTime> currentExecution,
-      Field<String> paramReference,
-      Field<String> paramType) {
-    TraiterSpecifique f = new TraiterSpecifique();
-    f.setDatelaplusrecente(datelaplusrecente);
-    f.setDerniereremontee(derniereremontee);
-    f.setCurrentExecution(currentExecution);
-    f.setParamReference(paramReference);
-    f.setParamType(paramType);
-
-    return f.asField();
-  }
+        return f.asField();
+    }
 }

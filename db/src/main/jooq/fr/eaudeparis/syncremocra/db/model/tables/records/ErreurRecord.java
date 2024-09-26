@@ -3,294 +3,299 @@
  */
 package fr.eaudeparis.syncremocra.db.model.tables.records;
 
+
 import fr.eaudeparis.syncremocra.db.model.tables.Erreur;
+
 import java.time.LocalDateTime;
+
 import org.jooq.Field;
 import org.jooq.Record1;
 import org.jooq.Record6;
 import org.jooq.Row6;
 import org.jooq.impl.UpdatableRecordImpl;
 
+
 /**
- * Erreur rencontrée lors du processus global de synchronisation entre REMOCRA et EDP et pouvant
- * donner lieu à notification
+ * Erreur rencontrée lors du processus global de synchronisation entre REMOCRA 
+ * et EDP et pouvant donner lieu à notification
  */
-@SuppressWarnings({"all", "unchecked", "rawtypes"})
-public class ErreurRecord extends UpdatableRecordImpl<ErreurRecord>
-    implements Record6<Integer, LocalDateTime, String, Boolean, Long, Long> {
+@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+public class ErreurRecord extends UpdatableRecordImpl<ErreurRecord> implements Record6<Integer, LocalDateTime, String, Boolean, Long, Long> {
 
-  private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
-  /** Setter for <code>edp.erreur.id</code>. Identifiant interne */
-  public ErreurRecord setId(Integer value) {
-    set(0, value);
-    return this;
-  }
+    /**
+     * Setter for <code>edp.erreur.id</code>. Identifiant interne
+     */
+    public ErreurRecord setId(Integer value) {
+        set(0, value);
+        return this;
+    }
 
-  /** Getter for <code>edp.erreur.id</code>. Identifiant interne */
-  public Integer getId() {
-    return (Integer) get(0);
-  }
+    /**
+     * Getter for <code>edp.erreur.id</code>. Identifiant interne
+     */
+    public Integer getId() {
+        return (Integer) get(0);
+    }
 
-  /** Setter for <code>edp.erreur.date</code>. Date et heure de l'erreur */
-  public ErreurRecord setDate(LocalDateTime value) {
-    set(1, value);
-    return this;
-  }
+    /**
+     * Setter for <code>edp.erreur.date</code>. Date et heure de l'erreur
+     */
+    public ErreurRecord setDate(LocalDateTime value) {
+        set(1, value);
+        return this;
+    }
 
-  /** Getter for <code>edp.erreur.date</code>. Date et heure de l'erreur */
-  public LocalDateTime getDate() {
-    return (LocalDateTime) get(1);
-  }
+    /**
+     * Getter for <code>edp.erreur.date</code>. Date et heure de l'erreur
+     */
+    public LocalDateTime getDate() {
+        return (LocalDateTime) get(1);
+    }
 
-  /**
-   * Setter for <code>edp.erreur.description</code>. Description ou message d'erreur retourné par le
-   * processus ou l'API
-   */
-  public ErreurRecord setDescription(String value) {
-    set(2, value);
-    return this;
-  }
+    /**
+     * Setter for <code>edp.erreur.description</code>. Description ou message d'erreur retourné par le processus ou l'API
+     */
+    public ErreurRecord setDescription(String value) {
+        set(2, value);
+        return this;
+    }
 
-  /**
-   * Getter for <code>edp.erreur.description</code>. Description ou message d'erreur retourné par le
-   * processus ou l'API
-   */
-  public String getDescription() {
-    return (String) get(2);
-  }
+    /**
+     * Getter for <code>edp.erreur.description</code>. Description ou message d'erreur retourné par le processus ou l'API
+     */
+    public String getDescription() {
+        return (String) get(2);
+    }
 
-  /** Setter for <code>edp.erreur.notifie</code>. */
-  public ErreurRecord setNotifie(Boolean value) {
-    set(3, value);
-    return this;
-  }
+    /**
+     * Setter for <code>edp.erreur.notifie</code>.
+     */
+    public ErreurRecord setNotifie(Boolean value) {
+        set(3, value);
+        return this;
+    }
 
-  /** Getter for <code>edp.erreur.notifie</code>. */
-  public Boolean getNotifie() {
-    return (Boolean) get(3);
-  }
+    /**
+     * Getter for <code>edp.erreur.notifie</code>.
+     */
+    public Boolean getNotifie() {
+        return (Boolean) get(3);
+    }
 
-  /** Setter for <code>edp.erreur.type_erreur</code>. Référence au type d'erreur */
-  public ErreurRecord setTypeErreur(Long value) {
-    set(4, value);
-    return this;
-  }
+    /**
+     * Setter for <code>edp.erreur.type_erreur</code>. Référence au type d'erreur
+     */
+    public ErreurRecord setTypeErreur(Long value) {
+        set(4, value);
+        return this;
+    }
 
-  /** Getter for <code>edp.erreur.type_erreur</code>. Référence au type d'erreur */
-  public Long getTypeErreur() {
-    return (Long) get(4);
-  }
+    /**
+     * Getter for <code>edp.erreur.type_erreur</code>. Référence au type d'erreur
+     */
+    public Long getTypeErreur() {
+        return (Long) get(4);
+    }
 
-  /**
-   * Setter for <code>edp.erreur.message</code>. Référence au message impliqué dans le processus de
-   * PUSH vers Remocra. Permet notament de retrouver le PEI impacté et les informations à
-   * synchroniser
-   */
-  public ErreurRecord setMessage(Long value) {
-    set(5, value);
-    return this;
-  }
+    /**
+     * Setter for <code>edp.erreur.message</code>. Référence au message impliqué dans le processus de PUSH vers Remocra. Permet notament de retrouver le PEI impacté et les informations à synchroniser
+     */
+    public ErreurRecord setMessage(Long value) {
+        set(5, value);
+        return this;
+    }
 
-  /**
-   * Getter for <code>edp.erreur.message</code>. Référence au message impliqué dans le processus de
-   * PUSH vers Remocra. Permet notament de retrouver le PEI impacté et les informations à
-   * synchroniser
-   */
-  public Long getMessage() {
-    return (Long) get(5);
-  }
+    /**
+     * Getter for <code>edp.erreur.message</code>. Référence au message impliqué dans le processus de PUSH vers Remocra. Permet notament de retrouver le PEI impacté et les informations à synchroniser
+     */
+    public Long getMessage() {
+        return (Long) get(5);
+    }
 
-  // -------------------------------------------------------------------------
-  // Primary key information
-  // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Primary key information
+    // -------------------------------------------------------------------------
 
-  @Override
-  public Record1<Integer> key() {
-    return (Record1) super.key();
-  }
+    @Override
+    public Record1<Integer> key() {
+        return (Record1) super.key();
+    }
 
-  // -------------------------------------------------------------------------
-  // Record6 type implementation
-  // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Record6 type implementation
+    // -------------------------------------------------------------------------
 
-  @Override
-  public Row6<Integer, LocalDateTime, String, Boolean, Long, Long> fieldsRow() {
-    return (Row6) super.fieldsRow();
-  }
+    @Override
+    public Row6<Integer, LocalDateTime, String, Boolean, Long, Long> fieldsRow() {
+        return (Row6) super.fieldsRow();
+    }
 
-  @Override
-  public Row6<Integer, LocalDateTime, String, Boolean, Long, Long> valuesRow() {
-    return (Row6) super.valuesRow();
-  }
+    @Override
+    public Row6<Integer, LocalDateTime, String, Boolean, Long, Long> valuesRow() {
+        return (Row6) super.valuesRow();
+    }
 
-  @Override
-  public Field<Integer> field1() {
-    return Erreur.ERREUR.ID;
-  }
+    @Override
+    public Field<Integer> field1() {
+        return Erreur.ERREUR.ID;
+    }
 
-  @Override
-  public Field<LocalDateTime> field2() {
-    return Erreur.ERREUR.DATE;
-  }
+    @Override
+    public Field<LocalDateTime> field2() {
+        return Erreur.ERREUR.DATE;
+    }
 
-  @Override
-  public Field<String> field3() {
-    return Erreur.ERREUR.DESCRIPTION;
-  }
+    @Override
+    public Field<String> field3() {
+        return Erreur.ERREUR.DESCRIPTION;
+    }
 
-  @Override
-  public Field<Boolean> field4() {
-    return Erreur.ERREUR.NOTIFIE;
-  }
+    @Override
+    public Field<Boolean> field4() {
+        return Erreur.ERREUR.NOTIFIE;
+    }
 
-  @Override
-  public Field<Long> field5() {
-    return Erreur.ERREUR.TYPE_ERREUR;
-  }
+    @Override
+    public Field<Long> field5() {
+        return Erreur.ERREUR.TYPE_ERREUR;
+    }
 
-  @Override
-  public Field<Long> field6() {
-    return Erreur.ERREUR.MESSAGE;
-  }
+    @Override
+    public Field<Long> field6() {
+        return Erreur.ERREUR.MESSAGE;
+    }
 
-  @Override
-  public Integer component1() {
-    return getId();
-  }
+    @Override
+    public Integer component1() {
+        return getId();
+    }
 
-  @Override
-  public LocalDateTime component2() {
-    return getDate();
-  }
+    @Override
+    public LocalDateTime component2() {
+        return getDate();
+    }
 
-  @Override
-  public String component3() {
-    return getDescription();
-  }
+    @Override
+    public String component3() {
+        return getDescription();
+    }
 
-  @Override
-  public Boolean component4() {
-    return getNotifie();
-  }
+    @Override
+    public Boolean component4() {
+        return getNotifie();
+    }
 
-  @Override
-  public Long component5() {
-    return getTypeErreur();
-  }
+    @Override
+    public Long component5() {
+        return getTypeErreur();
+    }
 
-  @Override
-  public Long component6() {
-    return getMessage();
-  }
+    @Override
+    public Long component6() {
+        return getMessage();
+    }
 
-  @Override
-  public Integer value1() {
-    return getId();
-  }
+    @Override
+    public Integer value1() {
+        return getId();
+    }
 
-  @Override
-  public LocalDateTime value2() {
-    return getDate();
-  }
+    @Override
+    public LocalDateTime value2() {
+        return getDate();
+    }
 
-  @Override
-  public String value3() {
-    return getDescription();
-  }
+    @Override
+    public String value3() {
+        return getDescription();
+    }
 
-  @Override
-  public Boolean value4() {
-    return getNotifie();
-  }
+    @Override
+    public Boolean value4() {
+        return getNotifie();
+    }
 
-  @Override
-  public Long value5() {
-    return getTypeErreur();
-  }
+    @Override
+    public Long value5() {
+        return getTypeErreur();
+    }
 
-  @Override
-  public Long value6() {
-    return getMessage();
-  }
+    @Override
+    public Long value6() {
+        return getMessage();
+    }
 
-  @Override
-  public ErreurRecord value1(Integer value) {
-    setId(value);
-    return this;
-  }
+    @Override
+    public ErreurRecord value1(Integer value) {
+        setId(value);
+        return this;
+    }
 
-  @Override
-  public ErreurRecord value2(LocalDateTime value) {
-    setDate(value);
-    return this;
-  }
+    @Override
+    public ErreurRecord value2(LocalDateTime value) {
+        setDate(value);
+        return this;
+    }
 
-  @Override
-  public ErreurRecord value3(String value) {
-    setDescription(value);
-    return this;
-  }
+    @Override
+    public ErreurRecord value3(String value) {
+        setDescription(value);
+        return this;
+    }
 
-  @Override
-  public ErreurRecord value4(Boolean value) {
-    setNotifie(value);
-    return this;
-  }
+    @Override
+    public ErreurRecord value4(Boolean value) {
+        setNotifie(value);
+        return this;
+    }
 
-  @Override
-  public ErreurRecord value5(Long value) {
-    setTypeErreur(value);
-    return this;
-  }
+    @Override
+    public ErreurRecord value5(Long value) {
+        setTypeErreur(value);
+        return this;
+    }
 
-  @Override
-  public ErreurRecord value6(Long value) {
-    setMessage(value);
-    return this;
-  }
+    @Override
+    public ErreurRecord value6(Long value) {
+        setMessage(value);
+        return this;
+    }
 
-  @Override
-  public ErreurRecord values(
-      Integer value1,
-      LocalDateTime value2,
-      String value3,
-      Boolean value4,
-      Long value5,
-      Long value6) {
-    value1(value1);
-    value2(value2);
-    value3(value3);
-    value4(value4);
-    value5(value5);
-    value6(value6);
-    return this;
-  }
+    @Override
+    public ErreurRecord values(Integer value1, LocalDateTime value2, String value3, Boolean value4, Long value5, Long value6) {
+        value1(value1);
+        value2(value2);
+        value3(value3);
+        value4(value4);
+        value5(value5);
+        value6(value6);
+        return this;
+    }
 
-  // -------------------------------------------------------------------------
-  // Constructors
-  // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Constructors
+    // -------------------------------------------------------------------------
 
-  /** Create a detached ErreurRecord */
-  public ErreurRecord() {
-    super(Erreur.ERREUR);
-  }
+    /**
+     * Create a detached ErreurRecord
+     */
+    public ErreurRecord() {
+        super(Erreur.ERREUR);
+    }
 
-  /** Create a detached, initialised ErreurRecord */
-  public ErreurRecord(
-      Integer id,
-      LocalDateTime date,
-      String description,
-      Boolean notifie,
-      Long typeErreur,
-      Long message) {
-    super(Erreur.ERREUR);
+    /**
+     * Create a detached, initialised ErreurRecord
+     */
+    public ErreurRecord(Integer id, LocalDateTime date, String description, Boolean notifie, Long typeErreur, Long message) {
+        super(Erreur.ERREUR);
 
-    setId(id);
-    setDate(date);
-    setDescription(description);
-    setNotifie(notifie);
-    setTypeErreur(typeErreur);
-    setMessage(message);
-  }
+        setId(id);
+        setDate(date);
+        setDescription(description);
+        setNotifie(notifie);
+        setTypeErreur(typeErreur);
+        setMessage(message);
+    }
 }

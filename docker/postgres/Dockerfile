@@ -20,10 +20,10 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 ENV ROOTDIR /usr/local/src
+
 WORKDIR $ROOTDIR/
-RUN 
+
 # https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html
-# Download three listed rpm and put them in docker/postgres/ext folder
 COPY Dockerfile ext/oracle-instantclient-*.x86_64.rpm $ROOTDIR/
 RUN set -x \
   && ([ -f ${ROOTDIR}/oracle-instantclient-basic-21.1.0.0.0-1.x86_64.rpm ] \
