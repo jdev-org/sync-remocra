@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.inject.persist.Transactional;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.ReferentielMarquesModeles;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TracabilitePei;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TypeErreur;
@@ -61,6 +62,8 @@ public class MessageRepository {
   }
 
   @Inject RequestManager requestManager;
+
+  @Inject ApiEndpoints apiEndpoints;
 
   @Inject PeiRepository peiRepository;
 
@@ -126,17 +129,17 @@ public class MessageRepository {
         } else if ("CARACTERISTIQUES".equalsIgnoreCase(message.getType())) {
           logger.debug("Traitement CARACTERISTIQUES " + message.getId());
           data = this.traiterMessageCaracteristiques(message, reference);
-          path = "/api/deci/pei/" + reference + "/caracteristiques";
+          path = apiEndpoints.peiCaracteristiques(reference);
           methode = "PUT";
         } else if ("SPECIFIQUE".equalsIgnoreCase(message.getType())) {
           logger.debug("Traitement SPECIFIQUE " + message.getId());
           data = this.traiterMessageSpecifique(message, reference);
-          path = "/api/deci/pei/" + reference + "/visites";
+          path = apiEndpoints.peiVisites(reference);
           methode = "POST";
         } else if ("MANUELLE".equalsIgnoreCase(message.getType())) {
           logger.debug("Traitement MANUELLE " + message.getId());
           data = this.traiterMessageManuelle(message, reference);
-          path = "/api/deci/pei/" + reference + "/visites";
+          path = apiEndpoints.peiVisites(reference);
           methode = "POST";
         }
 
@@ -327,7 +330,7 @@ public class MessageRepository {
     params.put("numeroHydrant", reference);
     params.put("statut", "EN_COURS");
     String indispoEnCours =
-        this.requestManager.sendGetRequest("/api/deci/indispoTemporaire", params);
+        this.requestManager.sendGetRequest(apiEndpoints.indispoTemporaire(), params);
 
     // Si Indisponible, on créé une indispo temporaire s'il n'en existe pas déjà une
     // sur ce PEI
@@ -335,7 +338,7 @@ public class MessageRepository {
       if (indispoEnCours.length() <= 2) { // Null ou tableau vide
         logger.info("PEI " + reference + " indisponible - Création d'une indispo temporaire EDP");
         indispoTemp.put("methode", "POST");
-        indispoTemp.put("path", "/api/deci/indispoTemporaire");
+        indispoTemp.put("path", apiEndpoints.indispoTemporaire());
         ObjectNode data = mapper.createObjectNode();
         ArrayNode hydrants = mapper.createArrayNode();
         hydrants.add(reference);
@@ -399,7 +402,7 @@ public class MessageRepository {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
         indispoTemp.put("methode", "PUT");
-        indispoTemp.put("path", "/api/deci/indispoTemporaire/" + idIndispoTemp);
+        indispoTemp.put("path", apiEndpoints.indispoTemporaire(idIndispoTemp));
 
         ObjectNode data = mapper.createObjectNode();
 
@@ -647,7 +650,7 @@ public class MessageRepository {
           .execute();
 
       Integer codeRetour =
-          this.requestManager.sendRequest("POST", "/api/deci/pei/" + reference + "/visites", json);
+          this.requestManager.sendRequest("POST", apiEndpoints.peiVisites(reference), json);
       logger.info("Disponibilité: création d'une visite (retour : " + codeRetour + ")");
 
       // On modifie les motifs d'indispo actifs APRES la création de visite et si elle
@@ -706,7 +709,7 @@ public class MessageRepository {
       throws APIConnectionException, APIAuthentException, RequestException, InternalException {
     try {
       String dataPei =
-          this.requestManager.sendGetRequest("/api/deci/pei/" + reference + "/caracteristiques");
+          this.requestManager.sendGetRequest(apiEndpoints.peiCaracteristiques(reference));
 
       ObjectMapper mapper = new ObjectMapper();
       TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};

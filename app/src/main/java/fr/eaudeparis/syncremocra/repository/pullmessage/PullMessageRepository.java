@@ -9,6 +9,7 @@ import static fr.eaudeparis.syncremocra.db.model.tables.TypeErreur.TYPE_ERREUR;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.PullHydrant;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TypeErreur;
 import fr.eaudeparis.syncremocra.repository.erreur.ErreurRepository;
@@ -47,6 +48,8 @@ public class PullMessageRepository {
 
   @Inject RequestManager requestManager;
 
+  @Inject ApiEndpoints apiEndpoints;
+
   @Inject ErreurRepository erreurRepository;
 
   /** Récupération des informations depuis Remocra */
@@ -58,7 +61,7 @@ public class PullMessageRepository {
       logger.info("Récupération des modifications depuis " + date);
       Map<String, String> params = new HashMap<String, String>();
       params.put("date", date);
-      String json = this.requestManager.sendGetRequest("/api/deci/pei/diff", params);
+      String json = this.requestManager.sendGetRequest(apiEndpoints.peiDiff(), params);
 
       ObjectMapper objectMapper = new ObjectMapper();
       DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -227,10 +230,9 @@ public class PullMessageRepository {
               .where(PULL_HYDRANT.NUMERO.equalIgnoreCase(modif.getNumero()))
               .fetchOneInto(Long.class);
 
-      String jsonPei = this.requestManager.sendGetRequest("/api/deci/pei/" + modif.getNumero());
+      String jsonPei = this.requestManager.sendGetRequest(apiEndpoints.pei(modif.getNumero()));
       String jsonPeiCarac =
-          this.requestManager.sendGetRequest(
-              "/api/deci/pei/" + modif.getNumero() + "/caracteristiques");
+          this.requestManager.sendGetRequest(apiEndpoints.peiCaracteristiques(modif.getNumero()));
 
       ObjectMapper mapper = new ObjectMapper();
       TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
@@ -358,7 +360,7 @@ public class PullMessageRepository {
         .where(PULL_HYDRANT_VISITE.HYDRANT.eq(Long.valueOf(pei.getId())))
         .execute();
 
-    String jsonVisites = this.requestManager.sendGetRequest("/api/deci/pei/" + numero + "/visites");
+    String jsonVisites = this.requestManager.sendGetRequest(apiEndpoints.peiVisites(numero));
 
     ObjectMapper mapper = new ObjectMapper();
     TypeReference<List<Map<String, Object>>> typeRef =
@@ -375,7 +377,7 @@ public class PullMessageRepository {
     for (Map<String, Object> visite : dataVisites) {
       String jsonVisiteSpecifique =
           this.requestManager.sendGetRequest(
-              "/api/deci/pei/" + pei.getNumero() + "/visites/" + visite.get("identifiant"));
+              apiEndpoints.peiVisite(pei.getNumero(), visite.get("identifiant")));
       Map<String, Object> dataVisiteSpecifique =
           mapper.readValue(jsonVisiteSpecifique, typeRefKeyValue);
 

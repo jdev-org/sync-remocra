@@ -5,6 +5,7 @@ import static fr.eaudeparis.syncremocra.db.model.Tables.VUE_PEI_EDP_REMOCRA;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.VuePeiEdpRemocra;
 import fr.eaudeparis.syncremocra.repository.RepositoryUtil;
 import fr.eaudeparis.syncremocra.repository.model.SortOrder;
@@ -40,6 +41,8 @@ public class PeiRepository {
   }
 
   @Inject RequestManager requestManager;
+
+  @Inject ApiEndpoints apiEndpoints;
 
   public int count(VuePeiEdpRemocraFilter filters) {
     return context.fetchCount(getSelect().where(getFiltersCondition(filters)).getQuery());
@@ -106,7 +109,7 @@ public class PeiRepository {
       String reference, String contexte, boolean bloquante)
       throws RequestException, JsonProcessingException, APIConnectionException,
           APIAuthentException {
-    String dataPei = this.requestManager.sendGetRequest("/api/deci/pei/" + reference);
+    String dataPei = this.requestManager.sendGetRequest(apiEndpoints.pei(reference));
 
     ObjectMapper mapper = new ObjectMapper();
     TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
@@ -121,12 +124,7 @@ public class PeiRepository {
     }
 
     String path =
-        "/api/deci/referentiel/"
-            + type
-            + "/"
-            + nature
-            + "/naturesAnomalies?contexteVisite="
-            + contexte;
+        apiEndpoints.referentielNaturesAnomalies(type, nature) + "?contexteVisite=" + contexte;
     String dataAnomalies = this.requestManager.sendGetRequest(path);
     ArrayList<String> anomalies = new ArrayList<String>();
 

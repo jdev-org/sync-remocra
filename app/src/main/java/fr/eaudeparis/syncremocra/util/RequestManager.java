@@ -1,6 +1,7 @@
 package fr.eaudeparis.syncremocra.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.api.ApiSettings;
 import fr.eaudeparis.syncremocra.repository.erreur.ErreurRepository;
 import java.io.BufferedReader;
@@ -29,6 +30,7 @@ public class RequestManager {
   private static Logger logger = LoggerFactory.getLogger(RequestManager.class);
 
   private final ApiSettings settings;
+  private final ApiEndpoints apiEndpoints;
   private final ErrorReporter errorReporter;
   private final ObjectMapper mapper = new ObjectMapper();
   private String cachedAuthorizationHeader;
@@ -37,18 +39,20 @@ public class RequestManager {
   @Inject private ErreurRepository erreurRepository;
 
   @Inject
-  RequestManager(ApiSettings settings) {
-    this(settings, null);
+  RequestManager(ApiSettings settings, ApiEndpoints apiEndpoints) {
+    this(settings, apiEndpoints, null);
   }
 
   /**
    * Constructeur dédié aux tests pour remplacer le mécanisme de remontée d'erreurs.
    *
    * @param settings Configuration API
+   * @param apiEndpoints Fournisseur des chemins d'API centralisés
    * @param errorReporter Reporteur d'erreurs de test, ou {@code null} pour utiliser le dépôt
    */
-  RequestManager(ApiSettings settings, ErrorReporter errorReporter) {
+  RequestManager(ApiSettings settings, ApiEndpoints apiEndpoints, ErrorReporter errorReporter) {
     this.settings = settings;
+    this.apiEndpoints = apiEndpoints;
     this.errorReporter = errorReporter;
   }
 
@@ -70,7 +74,8 @@ public class RequestManager {
     URL url;
     HttpURLConnection conn = null;
     try {
-      url = new URL(buildUrl("/authentication/jwt?email=" + encode(settings.mail())));
+      url =
+          new URL(buildUrl(apiEndpoints.authenticationJwt() + "?email=" + encode(settings.mail())));
       conn = (HttpURLConnection) url.openConnection();
 
       conn.setRequestMethod("POST");

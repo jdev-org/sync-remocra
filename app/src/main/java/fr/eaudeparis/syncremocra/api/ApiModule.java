@@ -43,5 +43,6 @@ public class ApiModule extends AbstractModule {
   @Override
   protected void configure() {
     bind(ApiSettings.class).toInstance(apiSettings);
+    bind(ApiEndpoints.class).asEagerSingleton();
   }
 }

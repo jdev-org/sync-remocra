@@ -29,6 +29,13 @@ jobs:
         cache: maven
     - name: Build with Maven
       run: mvn -B clean install --file pom.xml
+    - name: Upload App Coverage Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: jacoco-app-report
+        path: app/target/site/jacoco
+        if-no-files-found: warn
 
     # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
     #- name: Update dependency graph

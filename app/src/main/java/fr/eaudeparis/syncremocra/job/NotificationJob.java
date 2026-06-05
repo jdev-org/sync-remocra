@@ -5,6 +5,7 @@ import static fr.eaudeparis.syncremocra.db.model.tables.TracabilitePei.TRACABILI
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.Message;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TracabilitePei;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.VueErreurToNotify;
@@ -43,6 +44,8 @@ public class NotificationJob implements Job {
   @Inject NotificationSettings settings;
 
   @Inject RequestManager requestManager;
+
+  @Inject ApiEndpoints apiEndpoints;
 
   @Inject
   public NotificationJob(MailUtil mailer, ErreurRepository erreurRepository, DSLContext context) {
@@ -192,7 +195,7 @@ public class NotificationJob implements Job {
 
       try {
         String indispoEnCours =
-            this.requestManager.sendGetRequest("/api/deci/pei/" + traca.getReference());
+            this.requestManager.sendGetRequest(apiEndpoints.pei(traca.getReference()));
 
         TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
         Map<String, Object> dataHydrant = mapper.readValue(indispoEnCours, typeRef);

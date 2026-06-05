@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.api.ImmutableApiSettings;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -66,6 +67,7 @@ public class RequestManagerTest {
                 .mail("test@example.com")
                 .password("secret")
                 .build(),
+            new ApiEndpoints(),
             (codeErreur, message, idMessage) -> {});
 
     Map<String, String> params = new LinkedHashMap<>();
@@ -119,6 +121,7 @@ public class RequestManagerTest {
                 .mail("unused@example.com")
                 .password("unused")
                 .build(),
+            new ApiEndpoints(),
             (codeErreur, message, idMessage) -> {});
 
     assertEquals("{\"ok\":true}", requestManager.sendGetRequest("/deci/pei"));
@@ -137,6 +140,7 @@ public class RequestManagerTest {
                 .mail("test@example.com")
                 .password("secret")
                 .build(),
+            new ApiEndpoints(),
             (codeErreur, message, idMessage) ->
                 reportedErrors.add(new ReportedError(codeErreur, message, idMessage)));
 
@@ -168,6 +172,7 @@ public class RequestManagerTest {
                 .mail("unused@example.com")
                 .password("unused")
                 .build(),
+            new ApiEndpoints(),
             (codeErreur, message, idMessage) ->
                 reportedErrors.add(new ReportedError(codeErreur, message, idMessage)));
 
@@ -207,6 +212,7 @@ public class RequestManagerTest {
                 .mail("test@example.com")
                 .password("secret")
                 .build(),
+            new ApiEndpoints(),
             (codeErreur, message, idMessage) ->
                 reportedErrors.add(new ReportedError(codeErreur, message, idMessage)));
 
