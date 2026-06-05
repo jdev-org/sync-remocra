@@ -103,6 +103,13 @@ nano /var/syncremocra/config/syncremocra.conf
 # docker pull client-docker-registry.atolcd.com/edp/syncremocra
 ----
 
+Vérifier en particulier la configuration d'accès à l'API REMOcRA :
+
+- `API_HOST` et `API_BASE_PATH`
+- `API_AUTH_TYPE=legacy-jwt` avec `API_MAIL` / `API_PASSWORD`
+- ou `API_AUTH_TYPE=keycloak` avec `API_KEYCLOAK_URL`, `API_KEYCLOAK_REALM`,
+  `API_KEYCLOAK_CLIENT_ID` et `API_KEYCLOAK_CLIENT_SECRET`
+
 
 Reconfiguration de l'accès à Oracle depuis PostgreSQL (remplacer le XXXXXXXXXX par la bonne valeur)
 [source,sh]

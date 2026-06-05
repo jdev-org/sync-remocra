@@ -15,6 +15,24 @@ public class ApiModule extends AbstractModule {
         .host(config.getString("host"))
         .mail(config.getString("mail"))
         .password(config.getString("password"));
+    if (config.hasPath("base_path")) {
+      builder.basePath(config.getString("base_path"));
+    }
+    if (config.hasPath("auth_type")) {
+      builder.authType(config.getString("auth_type"));
+    }
+    if (config.hasPath("keycloak_url")) {
+      builder.keycloakUrl(config.getString("keycloak_url"));
+    }
+    if (config.hasPath("keycloak_realm")) {
+      builder.keycloakRealm(config.getString("keycloak_realm"));
+    }
+    if (config.hasPath("keycloak_client_id")) {
+      builder.keycloakClientId(config.getString("keycloak_client_id"));
+    }
+    if (config.hasPath("keycloak_client_secret")) {
+      builder.keycloakClientSecret(config.getString("keycloak_client_secret"));
+    }
     return new ApiModule(builder.build());
   }
 
