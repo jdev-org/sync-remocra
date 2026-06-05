@@ -43,6 +43,22 @@ public class ApiEndpoints {
 
   /**
    * @param reference Référence ou numéro du PEI
+   * @return Endpoint de mise à jour des caractéristiques PIBI
+   */
+  public String peiPibiCaracteristiques(String reference) {
+    return pei(reference) + "/pibi-caracteristiques";
+  }
+
+  /**
+   * @param reference Référence ou numéro du PEI
+   * @return Endpoint de mise à jour des caractéristiques PENA
+   */
+  public String peiPenaCaracteristiques(String reference) {
+    return pei(reference) + "/pena-caracteristiques";
+  }
+
+  /**
+   * @param reference Référence ou numéro du PEI
    * @return Endpoint de la collection de visites du PEI ciblé
    */
   public String peiVisites(String reference) {
@@ -78,5 +94,13 @@ public class ApiEndpoints {
    */
   public String referentielNaturesAnomalies(String type, String nature) {
     return REFERENTIEL_ROOT + "/" + type + "/" + nature + "/naturesAnomalies";
+  }
+
+  /**
+   * @param type Type de PEI en minuscule, par exemple {@code pibi} ou {@code pena}
+   * @return Endpoint du référentiel des natures PEI pour le type fourni
+   */
+  public String referentielNaturesPei(String type) {
+    return REFERENTIEL_ROOT + "/" + type + "/naturesPEI";
   }
 }

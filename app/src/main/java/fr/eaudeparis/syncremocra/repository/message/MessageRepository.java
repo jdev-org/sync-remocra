@@ -128,8 +128,10 @@ public class MessageRepository {
 
         } else if ("CARACTERISTIQUES".equalsIgnoreCase(message.getType())) {
           logger.debug("Traitement CARACTERISTIQUES " + message.getId());
-          data = this.traiterMessageCaracteristiques(message, reference);
-          path = apiEndpoints.peiCaracteristiques(reference);
+          PeiCaracteristiquesUpdate update =
+              this.traiterMessageCaracteristiques(message, reference);
+          data = update.getPayload();
+          path = update.getPath();
           methode = "PUT";
         } else if ("SPECIFIQUE".equalsIgnoreCase(message.getType())) {
           logger.debug("Traitement SPECIFIQUE " + message.getId());
@@ -705,17 +707,28 @@ public class MessageRepository {
    * @throws APIConnectionException Impossible de contacter l'API
    * @throws APIAuthentException Impossible de s'authentifier à l'API
    */
-  private ObjectNode traiterMessageCaracteristiques(MessageModel message, String reference)
+  private PeiCaracteristiquesUpdate traiterMessageCaracteristiques(
+      MessageModel message, String reference)
       throws APIConnectionException, APIAuthentException, RequestException, InternalException {
     try {
+      String dataPeiSpecifique = this.requestManager.sendGetRequest(apiEndpoints.pei(reference));
       String dataPei =
           this.requestManager.sendGetRequest(apiEndpoints.peiCaracteristiques(reference));
+      String dataNaturesPibi =
+          this.requestManager.sendGetRequest(
+              apiEndpoints.referentielNaturesPei(PeiType.PIBI.getApiValue()));
+      String dataNaturesPena =
+          this.requestManager.sendGetRequest(
+              apiEndpoints.referentielNaturesPei(PeiType.PENA.getApiValue()));
 
       ObjectMapper mapper = new ObjectMapper();
       TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
+      TypeReference<List<Map<String, Object>>> listTypeRef =
+          new TypeReference<List<Map<String, Object>>>() {};
+      Map<String, Object> dataPeiDetail = mapper.readValue(dataPeiSpecifique, typeRef);
       Map<String, Object> data = mapper.readValue(dataPei, typeRef);
-
-      ObjectNode caracteristiques = mapper.createObjectNode();
+      List<Map<String, Object>> pibiNatures = mapper.readValue(dataNaturesPibi, listTypeRef);
+      List<Map<String, Object>> penaNatures = mapper.readValue(dataNaturesPena, listTypeRef);
 
       TracabilitePei traca =
           context
@@ -765,34 +778,26 @@ public class MessageRepository {
         }
       }
 
-      // Données EDP
-      caracteristiques.put("codeMarque", codeMarque);
-      caracteristiques.put("codeModele", codeModele);
-      caracteristiques.put(
-          "diametreCanalisation",
-          traca.getDiametreCanalisation() != null
-              ? Integer.valueOf(traca.getDiametreCanalisation())
-              : null);
-      caracteristiques.put("codeDiametre", codeDiametre);
+      PeiType peiType = PeiTypeResolver.resolve(dataPeiDetail, pibiNatures, penaNatures);
+      if (peiType == null) {
+        TypeErreur typeErreur =
+            context
+                .selectFrom(TYPE_ERREUR)
+                .where(TYPE_ERREUR.CODE.equal("I1004"))
+                .fetchOneInto(TypeErreur.class);
+        throw new InternalException(typeErreur.getCode(), typeErreur.getMessageErreur());
+      }
 
-      // Consolidation données remocra
-      caracteristiques.put("capaciteIllimitee", JSONUtil.getBoolean(data, "illimite"));
-      caracteristiques.put("ressourceIncertaine", JSONUtil.getBoolean(data, "incertaine"));
-      caracteristiques.put("codeNatureReseau", JSONUtil.getString(data, "natureReseau"));
-      caracteristiques.put(
-          "codeNatureCanalisation", JSONUtil.getString(data, "natureCanalisation"));
-      caracteristiques.put("reseauSurpresse", JSONUtil.getBoolean(data, "reseauSurpresse"));
-      caracteristiques.put("reseauAdditive", JSONUtil.getBoolean(data, "reseauAdditive"));
-      caracteristiques.put("capacite", JSONUtil.getString(data, "capacite"));
-      caracteristiques.put("debitAppoint", JSONUtil.getDouble(data, "debitAppoint"));
-      caracteristiques.put("codeMateriau", JSONUtil.getString(data, "codeMateriau"));
-      caracteristiques.put("equipeHBE", JSONUtil.getBoolean(data, "equipeHBE"));
-      caracteristiques.put("peiJumele", JSONUtil.getString(data, "jumelage"));
-      caracteristiques.put("inviolabilite", JSONUtil.getBoolean(data, "inviolabilite"));
-      caracteristiques.put("renversable", JSONUtil.getBoolean(data, "renversable"));
-      caracteristiques.put("anneeFabrication", JSONUtil.getInteger(data, "anneeFabrication"));
-
-      return caracteristiques;
+      return PeiCaracteristiquesUpdateFactory.create(
+          mapper,
+          apiEndpoints,
+          peiType,
+          reference,
+          traca,
+          data,
+          codeDiametre,
+          codeMarque,
+          codeModele);
 
     } catch (JsonProcessingException e) {
       e.printStackTrace();

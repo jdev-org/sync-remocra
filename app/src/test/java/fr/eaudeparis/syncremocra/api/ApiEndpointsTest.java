@@ -13,8 +13,14 @@ public class ApiEndpointsTest {
     assertEquals("/deci/pei/diff", apiEndpoints.peiDiff());
     assertEquals("/deci/pei/PEI-001", apiEndpoints.pei("PEI-001"));
     assertEquals("/deci/pei/PEI-001/caracteristiques", apiEndpoints.peiCaracteristiques("PEI-001"));
+    assertEquals(
+        "/deci/pei/PEI-001/pibi-caracteristiques", apiEndpoints.peiPibiCaracteristiques("PEI-001"));
+    assertEquals(
+        "/deci/pei/PEI-001/pena-caracteristiques", apiEndpoints.peiPenaCaracteristiques("PEI-001"));
     assertEquals("/deci/pei/PEI-001/visites", apiEndpoints.peiVisites("PEI-001"));
     assertEquals("/deci/pei/PEI-001/visites/42", apiEndpoints.peiVisite("PEI-001", 42));
+    assertEquals("/deci/referentiel/pibi/naturesPEI", apiEndpoints.referentielNaturesPei("pibi"));
+    assertEquals("/deci/referentiel/pena/naturesPEI", apiEndpoints.referentielNaturesPei("pena"));
   }
 
   @Test
