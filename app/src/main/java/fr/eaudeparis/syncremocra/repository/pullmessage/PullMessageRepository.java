@@ -236,6 +236,7 @@ public class PullMessageRepository {
       TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
       Map<String, Object> dataPei = mapper.readValue(jsonPei, typeRef);
       Map<String, Object> dataPeiCarac = mapper.readValue(jsonPeiCarac, typeRef);
+      PullHydrant hydrant = PullHydrantMapper.map(dataPei, dataPeiCarac);
 
       String auteurModification =
           ("USER".equals(modif.getAuteurModificationFlag()))
@@ -259,31 +260,25 @@ public class PullMessageRepository {
                         .atZone(ZoneId.systemDefault())
                         .toLocalDateTime())
                 .set(PULL_HYDRANT.AUTEUR_MODIFICATION, auteurModification)
-                .set(PULL_HYDRANT.DIAMETRE, JSONUtil.getString(dataPeiCarac, "diametre"))
-                .set(PULL_HYDRANT.MARQUE, JSONUtil.getString(dataPeiCarac, "marque"))
-                .set(PULL_HYDRANT.MODELE, JSONUtil.getString(dataPeiCarac, "modele"))
-                .set(
-                    PULL_HYDRANT.DIAMETRE_CANALISATION,
-                    JSONUtil.getInteger(dataPeiCarac, "diametreCanalisation"))
-                .set(
-                    PULL_HYDRANT.ANNEE_FABRICATION,
-                    JSONUtil.getString(dataPeiCarac, "anneeFabrication"))
-                .set(PULL_HYDRANT.COMPLEMENT, JSONUtil.getString(dataPei, "complement"))
-                .set(PULL_HYDRANT.DISPO_TERRESTRE, JSONUtil.getString(dataPei, "dispoTerrestre"))
-                .set(PULL_HYDRANT.DISPO_HBE, JSONUtil.getString(dataPei, "dispoAerienne"))
-                .set(PULL_HYDRANT.NUMERO_VOIE, JSONUtil.getInteger(dataPei, "numeroVoie"))
-                .set(PULL_HYDRANT.SUFFIXE_VOIE, JSONUtil.getString(dataPei, "suffixeVoie"))
-                .set(PULL_HYDRANT.NIVEAU, JSONUtil.getString(dataPei, "niveau"))
-                .set(PULL_HYDRANT.VOIE, JSONUtil.getString(dataPei, "voie"))
-                .set(PULL_HYDRANT.VOIE2, JSONUtil.getString(dataPei, "carrefour"))
-                .set(PULL_HYDRANT.EN_FACE, JSONUtil.getBoolean(dataPei, "enFace"))
-                .set(PULL_HYDRANT.DOMAINE, JSONUtil.getString(dataPei, "domaine"))
-                .set(PULL_HYDRANT.COMMUNE, JSONUtil.getString(dataPei, "commune"))
-                .set(PULL_HYDRANT.NATURE, JSONUtil.getString(dataPei, "nature"))
-                .set(PULL_HYDRANT.NATURE_DECI, JSONUtil.getString(dataPei, "natureDeci"))
-                .set(
-                    PULL_HYDRANT.INDISPO_TEMPORAIRE,
-                    JSONUtil.getBoolean(dataPei, "indispoTemporaire"))
+                .set(PULL_HYDRANT.DIAMETRE, hydrant.getDiametre())
+                .set(PULL_HYDRANT.MARQUE, hydrant.getMarque())
+                .set(PULL_HYDRANT.MODELE, hydrant.getModele())
+                .set(PULL_HYDRANT.DIAMETRE_CANALISATION, hydrant.getDiametreCanalisation())
+                .set(PULL_HYDRANT.ANNEE_FABRICATION, hydrant.getAnneeFabrication())
+                .set(PULL_HYDRANT.COMPLEMENT, hydrant.getComplement())
+                .set(PULL_HYDRANT.DISPO_TERRESTRE, hydrant.getDispoTerrestre())
+                .set(PULL_HYDRANT.DISPO_HBE, hydrant.getDispoHbe())
+                .set(PULL_HYDRANT.NUMERO_VOIE, hydrant.getNumeroVoie())
+                .set(PULL_HYDRANT.SUFFIXE_VOIE, hydrant.getSuffixeVoie())
+                .set(PULL_HYDRANT.NIVEAU, hydrant.getNiveau())
+                .set(PULL_HYDRANT.VOIE, hydrant.getVoie())
+                .set(PULL_HYDRANT.VOIE2, hydrant.getVoie2())
+                .set(PULL_HYDRANT.EN_FACE, hydrant.getEnFace())
+                .set(PULL_HYDRANT.DOMAINE, hydrant.getDomaine())
+                .set(PULL_HYDRANT.COMMUNE, hydrant.getCommune())
+                .set(PULL_HYDRANT.NATURE, hydrant.getNature())
+                .set(PULL_HYDRANT.NATURE_DECI, hydrant.getNatureDeci())
+                .set(PULL_HYDRANT.INDISPO_TEMPORAIRE, hydrant.getIndispoTemporaire())
                 .returning(PULL_HYDRANT.ID)
                 .fetchOne()
                 .getValue(PULL_HYDRANT.ID);
@@ -302,29 +297,25 @@ public class PullMessageRepository {
                     .atZone(ZoneId.systemDefault())
                     .toLocalDateTime())
             .set(PULL_HYDRANT.AUTEUR_MODIFICATION, auteurModification)
-            .set(PULL_HYDRANT.DIAMETRE, JSONUtil.getString(dataPeiCarac, "diametre"))
-            .set(PULL_HYDRANT.MARQUE, JSONUtil.getString(dataPeiCarac, "marque"))
-            .set(PULL_HYDRANT.MODELE, JSONUtil.getString(dataPeiCarac, "modele"))
-            .set(
-                PULL_HYDRANT.DIAMETRE_CANALISATION,
-                JSONUtil.getInteger(dataPeiCarac, "diametreCanalisation"))
-            .set(
-                PULL_HYDRANT.ANNEE_FABRICATION,
-                JSONUtil.getString(dataPeiCarac, "anneeFabrication"))
-            .set(PULL_HYDRANT.COMPLEMENT, JSONUtil.getString(dataPei, "complement"))
-            .set(PULL_HYDRANT.DISPO_TERRESTRE, JSONUtil.getString(dataPei, "dispoTerrestre"))
-            .set(PULL_HYDRANT.DISPO_HBE, JSONUtil.getString(dataPei, "dispoAerienne"))
-            .set(PULL_HYDRANT.NUMERO_VOIE, JSONUtil.getInteger(dataPei, "numeroVoie"))
-            .set(PULL_HYDRANT.SUFFIXE_VOIE, JSONUtil.getString(dataPei, "suffixeVoie"))
-            .set(PULL_HYDRANT.NIVEAU, JSONUtil.getString(dataPei, "niveau"))
-            .set(PULL_HYDRANT.VOIE, JSONUtil.getString(dataPei, "voie"))
-            .set(PULL_HYDRANT.VOIE2, JSONUtil.getString(dataPei, "carrefour"))
-            .set(PULL_HYDRANT.EN_FACE, JSONUtil.getBoolean(dataPei, "enFace"))
-            .set(PULL_HYDRANT.DOMAINE, JSONUtil.getString(dataPei, "domaine"))
-            .set(PULL_HYDRANT.COMMUNE, JSONUtil.getString(dataPei, "commune"))
-            .set(PULL_HYDRANT.NATURE, JSONUtil.getString(dataPei, "nature"))
-            .set(PULL_HYDRANT.NATURE_DECI, JSONUtil.getString(dataPei, "natureDeci"))
-            .set(PULL_HYDRANT.INDISPO_TEMPORAIRE, JSONUtil.getBoolean(dataPei, "indispoTemporaire"))
+            .set(PULL_HYDRANT.DIAMETRE, hydrant.getDiametre())
+            .set(PULL_HYDRANT.MARQUE, hydrant.getMarque())
+            .set(PULL_HYDRANT.MODELE, hydrant.getModele())
+            .set(PULL_HYDRANT.DIAMETRE_CANALISATION, hydrant.getDiametreCanalisation())
+            .set(PULL_HYDRANT.ANNEE_FABRICATION, hydrant.getAnneeFabrication())
+            .set(PULL_HYDRANT.COMPLEMENT, hydrant.getComplement())
+            .set(PULL_HYDRANT.DISPO_TERRESTRE, hydrant.getDispoTerrestre())
+            .set(PULL_HYDRANT.DISPO_HBE, hydrant.getDispoHbe())
+            .set(PULL_HYDRANT.NUMERO_VOIE, hydrant.getNumeroVoie())
+            .set(PULL_HYDRANT.SUFFIXE_VOIE, hydrant.getSuffixeVoie())
+            .set(PULL_HYDRANT.NIVEAU, hydrant.getNiveau())
+            .set(PULL_HYDRANT.VOIE, hydrant.getVoie())
+            .set(PULL_HYDRANT.VOIE2, hydrant.getVoie2())
+            .set(PULL_HYDRANT.EN_FACE, hydrant.getEnFace())
+            .set(PULL_HYDRANT.DOMAINE, hydrant.getDomaine())
+            .set(PULL_HYDRANT.COMMUNE, hydrant.getCommune())
+            .set(PULL_HYDRANT.NATURE, hydrant.getNature())
+            .set(PULL_HYDRANT.NATURE_DECI, hydrant.getNatureDeci())
+            .set(PULL_HYDRANT.INDISPO_TEMPORAIRE, hydrant.getIndispoTemporaire())
             .where(PULL_HYDRANT.ID.eq(Math.toIntExact(id)))
             .execute();
       }
