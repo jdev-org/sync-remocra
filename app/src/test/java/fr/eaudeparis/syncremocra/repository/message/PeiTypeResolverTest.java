@@ -24,9 +24,9 @@ public class PeiTypeResolverTest {
   }
 
   @Test
-  public void shouldResolvePenaUsingLegacyNatureCode() {
+  public void shouldResolvePenaUsingV3NatureId() {
     Map<String, Object> pei = new HashMap<>();
-    pei.put("nature", "PA");
+    pei.put("peiNatureId", "pena-id");
 
     List<Map<String, Object>> pibiNatures = Arrays.asList(nature("pibi-id", "PI"));
     List<Map<String, Object>> penaNatures = Arrays.asList(nature("pena-id", "PA"));

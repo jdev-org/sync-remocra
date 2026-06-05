@@ -11,14 +11,10 @@ import org.junit.Test;
 public class PullHydrantVisiteMapperTest {
 
   @Test
-  public void shouldResolveVisitIdentifiersFromBothContracts() {
-    Map<String, Object> legacyVisite = new HashMap<>();
-    legacyVisite.put("identifiant", "42");
-
+  public void shouldResolveVisitIdentifierFromV3Contract() {
     Map<String, Object> v3Visite = new HashMap<>();
     v3Visite.put("visiteId", "uuid-1");
 
-    assertEquals("42", PullHydrantVisiteMapper.getVisiteId(legacyVisite));
     assertEquals("uuid-1", PullHydrantVisiteMapper.getVisiteId(v3Visite));
   }
 
@@ -39,15 +35,10 @@ public class PullHydrantVisiteMapperTest {
   }
 
   @Test
-  public void shouldResolveVisitDatesFromLegacyAndV3Contracts() {
-    Map<String, Object> legacyVisite = new HashMap<>();
-    legacyVisite.put("date", "2026-06-05 09:30");
-
+  public void shouldResolveVisitDatesFromV3Contract() {
     Map<String, Object> v3Visite = new HashMap<>();
     v3Visite.put("moment", "2026-06-05T09:30:00+02:00");
 
-    assertEquals(
-        LocalDateTime.of(2026, 6, 5, 9, 30), PullHydrantVisiteMapper.getVisitDate(legacyVisite));
     assertEquals(
         LocalDateTime.of(2026, 6, 5, 9, 30), PullHydrantVisiteMapper.getVisitDate(v3Visite));
     assertNull(PullHydrantVisiteMapper.getVisitDate(new HashMap<>()));

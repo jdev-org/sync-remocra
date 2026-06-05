@@ -13,17 +13,23 @@ public interface ApiSettings {
     return "";
   }
 
-  /** @return Type d'authentification API: {@code legacy-jwt} ou {@code keycloak} */
+  /** @return Type d'authentification API supporté par le client v3, soit {@code keycloak} */
   @Value.Default
   default String authType() {
-    return "legacy-jwt";
+    return "keycloak";
   }
 
-  /** @return Mot de passe de l'utilisateur API en mode d'authentification historique */
-  String password();
+  /** @return Mot de passe historique conservé pour compatibilité de configuration locale */
+  @Value.Default
+  default String password() {
+    return "";
+  }
 
-  /** @return Adresse e-mail de l'utilisateur API en mode d'authentification historique */
-  String mail();
+  /** @return Adresse e-mail historique conservée pour compatibilité de configuration locale */
+  @Value.Default
+  default String mail() {
+    return "";
+  }
 
   /** @return URL de base de Keycloak en mode OIDC */
   @Value.Default

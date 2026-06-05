@@ -12,17 +12,6 @@ import org.junit.Test;
 public class RemocraAnomalieMapperTest {
 
   @Test
-  public void shouldReadLegacyAnomalieFields() {
-    Map<String, Object> anomalie = new HashMap<>();
-    anomalie.put("code", "BSPP_APSE");
-    anomalie.put("valIndispoTerrestre", 5);
-
-    assertEquals("BSPP_APSE", RemocraAnomalieMapper.getCode(anomalie));
-    assertTrue(RemocraAnomalieMapper.isBloquante(anomalie));
-    assertTrue(RemocraAnomalieMapper.supportsTypeVisite(anomalie, "NP"));
-  }
-
-  @Test
   public void shouldReadV3AnomalieFields() {
     Map<String, Object> anomalie = new HashMap<>();
     anomalie.put("anomalieCode", "BSPP_PISD");
@@ -42,5 +31,14 @@ public class RemocraAnomalieMapperTest {
     anomalie.put("poidsAnomalieValIndispoTerrestre", 2);
 
     assertFalse(RemocraAnomalieMapper.isBloquante(anomalie));
+  }
+
+  @Test
+  public void shouldAllowAnomaliesWithoutVisitTypeRestriction() {
+    Map<String, Object> anomalie = new HashMap<>();
+    anomalie.put("anomalieCode", "BSPP_TEST");
+    anomalie.put("poidsAnomalieValIndispoTerrestre", 5);
+
+    assertTrue(RemocraAnomalieMapper.supportsTypeVisite(anomalie, "NP"));
   }
 }

@@ -78,22 +78,12 @@ Exemple pour Visual Studio Code .vscode/launch.json :
 
 ### Configuration de l'API REMOcRA
 
-La configuration par défaut reste compatible avec l'authentification historique JWT.
+Le client REMOcRA est configuré en v3 only avec authentification Keycloak / OIDC.
 
 Variables d'environnement disponibles :
 
 ```sh
 API_HOST=http://localhost:8881
-API_BASE_PATH=
-API_AUTH_TYPE=legacy-jwt
-API_MAIL=serviceeaux@atolcd.com
-API_PASSWORD=remocra1975
-```
-
-Pour une authentification Keycloak / OIDC :
-
-```sh
-API_HOST=https://remocra.example
 API_BASE_PATH=/api
 API_AUTH_TYPE=keycloak
 API_KEYCLOAK_URL=https://keycloak.example

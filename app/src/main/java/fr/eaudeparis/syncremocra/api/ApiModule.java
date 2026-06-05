@@ -11,10 +11,13 @@ public class ApiModule extends AbstractModule {
 
   public static ApiModule create(Config config) {
     ImmutableApiSettings.Builder builder = ImmutableApiSettings.builder();
-    builder
-        .host(config.getString("host"))
-        .mail(config.getString("mail"))
-        .password(config.getString("password"));
+    builder.host(config.getString("host"));
+    if (config.hasPath("mail")) {
+      builder.mail(config.getString("mail"));
+    }
+    if (config.hasPath("password")) {
+      builder.password(config.getString("password"));
+    }
     if (config.hasPath("base_path")) {
       builder.basePath(config.getString("base_path"));
     }

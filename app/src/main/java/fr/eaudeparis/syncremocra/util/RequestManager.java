@@ -64,40 +64,12 @@ public class RequestManager {
    * @throws APIAuthentException Impossible de s'authentifier à l'API
    */
   private String authenticateToRemocra() throws APIConnectionException, APIAuthentException {
-    if ("keycloak".equalsIgnoreCase(settings.authType())) {
-      return authenticateToKeycloak();
+    if (!"keycloak".equalsIgnoreCase(settings.authType())) {
+      logger.warn(
+          "Mode d'authentification API REMOcRA non supporté en v3 only: {}", settings.authType());
+      throwAuthenticationException();
     }
-    return authenticateWithLegacyJwt();
-  }
-
-  private String authenticateWithLegacyJwt() throws APIConnectionException, APIAuthentException {
-    URL url;
-    HttpURLConnection conn = null;
-    try {
-      url =
-          new URL(buildUrl(apiEndpoints.authenticationJwt() + "?email=" + encode(settings.mail())));
-      conn = (HttpURLConnection) url.openConnection();
-
-      conn.setRequestMethod("POST");
-      conn.setDoOutput(true);
-      conn.setDoInput(true);
-      conn.setRequestProperty("X-password", settings.password());
-
-      Integer codeRetour = conn.getResponseCode();
-
-      if (codeRetour != null && conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
-        return conn.getHeaderField("Authorization");
-      } else {
-        throwAuthenticationException();
-      }
-    } catch (IOException e) {
-      throwConnectionException(e);
-    } finally {
-      if (conn != null) {
-        conn.disconnect();
-      }
-    }
-    return null;
+    return authenticateToKeycloak();
   }
 
   private synchronized String authenticateToKeycloak()

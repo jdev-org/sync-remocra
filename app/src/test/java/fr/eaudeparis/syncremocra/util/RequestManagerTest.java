@@ -32,28 +32,24 @@ public class RequestManagerTest {
   }
 
   @Test
-  public void shouldUseLegacyJwtAndBasePathForGetRequest() throws Exception {
-    AtomicInteger authCalls = new AtomicInteger();
+  public void shouldUseKeycloakAndBasePathForGetRequest() throws Exception {
+    AtomicInteger tokenCalls = new AtomicInteger();
     AtomicInteger apiCalls = new AtomicInteger();
 
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext(
-        "/remocra/authentication/jwt",
+        "/realms/remocra/protocol/openid-connect/token",
         exchange -> {
-          authCalls.incrementAndGet();
+          tokenCalls.incrementAndGet();
           assertEquals("POST", exchange.getRequestMethod());
-          assertEquals("email=test%40example.com", exchange.getRequestURI().getRawQuery());
-          assertEquals("secret", exchange.getRequestHeaders().getFirst("X-password"));
-          exchange.getResponseHeaders().add("Authorization", "Bearer legacy-token");
-          respond(exchange, 200, "");
+          respond(exchange, 200, "{\"access_token\":\"kc-token\",\"expires_in\":300}");
         });
     server.createContext(
         "/remocra/deci/pei",
         exchange -> {
           apiCalls.incrementAndGet();
           assertEquals("GET", exchange.getRequestMethod());
-          assertEquals(
-              "Bearer legacy-token", exchange.getRequestHeaders().getFirst("Authorization"));
+          assertEquals("Bearer kc-token", exchange.getRequestHeaders().getFirst("Authorization"));
           assertEquals("numero=PEI%201&statut=EN%20COURS", exchange.getRequestURI().getRawQuery());
           respond(exchange, 200, "{\"ok\":true}");
         });
@@ -64,8 +60,11 @@ public class RequestManagerTest {
             ImmutableApiSettings.builder()
                 .host(serverBaseUrl())
                 .basePath("/remocra")
-                .mail("test@example.com")
-                .password("secret")
+                .authType("keycloak")
+                .keycloakUrl(serverBaseUrl())
+                .keycloakRealm("remocra")
+                .keycloakClientId("sync-remocra")
+                .keycloakClientSecret("top-secret")
                 .build(),
             new ApiEndpoints(),
             (codeErreur, message, idMessage) -> {});
@@ -77,7 +76,7 @@ public class RequestManagerTest {
     String response = requestManager.sendGetRequest("/deci/pei", params);
 
     assertEquals("{\"ok\":true}", response);
-    assertEquals(1, authCalls.get());
+    assertEquals(1, tokenCalls.get());
     assertEquals(1, apiCalls.get());
   }
 
@@ -137,8 +136,11 @@ public class RequestManagerTest {
         new fr.eaudeparis.syncremocra.util.RequestManager(
             ImmutableApiSettings.builder()
                 .host("http://127.0.0.1:1")
-                .mail("test@example.com")
-                .password("secret")
+                .authType("keycloak")
+                .keycloakUrl("http://127.0.0.1:1")
+                .keycloakRealm("remocra")
+                .keycloakClientId("sync-remocra")
+                .keycloakClientSecret("top-secret")
                 .build(),
             new ApiEndpoints(),
             (codeErreur, message, idMessage) ->
@@ -193,25 +195,11 @@ public class RequestManagerTest {
   }
 
   @Test
-  public void shouldRaiseAuthenticationErrorWhenLegacyJwtIsRefused() throws Exception {
+  public void shouldRaiseAuthenticationErrorWhenAuthTypeIsNotKeycloak() {
     List<ReportedError> reportedErrors = new ArrayList<>();
-
-    server = HttpServer.create(new InetSocketAddress(0), 0);
-    server.createContext(
-        "/authentication/jwt",
-        exchange -> {
-          assertEquals("POST", exchange.getRequestMethod());
-          respond(exchange, 401, "");
-        });
-    server.start();
-
     fr.eaudeparis.syncremocra.util.RequestManager requestManager =
         new fr.eaudeparis.syncremocra.util.RequestManager(
-            ImmutableApiSettings.builder()
-                .host(serverBaseUrl())
-                .mail("test@example.com")
-                .password("secret")
-                .build(),
+            ImmutableApiSettings.builder().host("http://localhost").authType("legacy-jwt").build(),
             new ApiEndpoints(),
             (codeErreur, message, idMessage) ->
                 reportedErrors.add(new ReportedError(codeErreur, message, idMessage)));

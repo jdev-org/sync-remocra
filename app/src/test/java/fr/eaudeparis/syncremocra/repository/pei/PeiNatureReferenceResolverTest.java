@@ -13,20 +13,6 @@ import org.junit.Test;
 public class PeiNatureReferenceResolverTest {
 
   @Test
-  public void shouldResolveLegacyPibiNature() {
-    Map<String, Object> pei = new HashMap<>();
-    pei.put("type", "PIBI");
-    pei.put("nature", "PI");
-
-    PeiNatureReference reference =
-        PeiNatureReferenceResolver.resolve(
-            pei, Arrays.asList(nature("pibi-id", "PI")), Arrays.asList(nature("pena-id", "PA")));
-
-    assertEquals(PeiType.PIBI, reference.getPeiType());
-    assertEquals("PI", reference.getNatureCode());
-  }
-
-  @Test
   public void shouldResolveV3PenaNatureId() {
     Map<String, Object> pei = new HashMap<>();
     pei.put("peiNatureId", "pena-id");

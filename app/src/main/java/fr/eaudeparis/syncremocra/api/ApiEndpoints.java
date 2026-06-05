@@ -15,11 +15,6 @@ public class ApiEndpoints {
   private static final String VISITES_SEGMENT = "/visites";
   private static final String CARACTERISTIQUES_SEGMENT = "/caracteristiques";
 
-  /** @return Endpoint d'authentification historique REMOcRA */
-  public String authenticationJwt() {
-    return "/authentication/jwt";
-  }
-
   /** @return Endpoint de récupération des diffs PEI */
   public String peiDiff() {
     return PEI_ROOT + "/diff";

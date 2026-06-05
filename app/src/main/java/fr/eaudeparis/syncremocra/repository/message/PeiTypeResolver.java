@@ -35,11 +35,7 @@ public final class PeiTypeResolver {
   }
 
   private static String getNatureIdentifier(Map<String, Object> dataPei) {
-    String natureId = JSONUtil.getString(dataPei, "peiNatureId");
-    if (natureId != null) {
-      return natureId;
-    }
-    return JSONUtil.getString(dataPei, "nature");
+    return JSONUtil.getString(dataPei, "peiNatureId");
   }
 
   private static boolean containsNature(
@@ -47,10 +43,8 @@ public final class PeiTypeResolver {
     for (Map<String, Object> nature : natures) {
       String natureId = JSONUtil.getString(nature, "natureId");
       String natureCode = JSONUtil.getString(nature, "natureCode");
-      String legacyCode = JSONUtil.getString(nature, "code");
       if (natureIdentifier.equalsIgnoreCase(String.valueOf(natureId))
-          || natureIdentifier.equalsIgnoreCase(String.valueOf(natureCode))
-          || natureIdentifier.equalsIgnoreCase(String.valueOf(legacyCode))) {
+          || natureIdentifier.equalsIgnoreCase(String.valueOf(natureCode))) {
         return true;
       }
     }

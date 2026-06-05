@@ -30,6 +30,5 @@ public class ApiEndpointsTest {
     assertEquals(
         "/deci/referentiel/pibi/NAT-01/naturesAnomalies",
         apiEndpoints.referentielNaturesAnomalies("pibi", "NAT-01"));
-    assertEquals("/authentication/jwt", apiEndpoints.authenticationJwt());
   }
 }

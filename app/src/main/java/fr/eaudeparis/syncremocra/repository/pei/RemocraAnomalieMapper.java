@@ -4,7 +4,7 @@ import fr.eaudeparis.syncremocra.util.JSONUtil;
 import java.util.List;
 import java.util.Map;
 
-/** Mappe les anomalies des référentiels REMOcRA v2/v3 vers le format historique SyncRemocra. */
+/** Mappe les anomalies des référentiels REMOcRA v3 vers le format historique SyncRemocra. */
 public final class RemocraAnomalieMapper {
 
   private static final int BLOQUANTE_WEIGHT = 5;
@@ -12,27 +12,18 @@ public final class RemocraAnomalieMapper {
   private RemocraAnomalieMapper() {}
 
   /**
-   * Retourne le code d'anomalie, compatible v2 et v3.
-   *
    * @param anomalie anomalie issue du référentiel REMOcRA
    * @return code de l'anomalie
    */
   public static String getCode(Map<String, Object> anomalie) {
-    String legacyCode = JSONUtil.getString(anomalie, "code");
-    return (legacyCode != null) ? legacyCode : JSONUtil.getString(anomalie, "anomalieCode");
+    return JSONUtil.getString(anomalie, "anomalieCode");
   }
 
   /**
-   * Détermine si l'anomalie est bloquante, compatible v2 et v3.
-   *
    * @param anomalie anomalie issue du référentiel REMOcRA
    * @return {@code true} si l'anomalie est bloquante
    */
   public static boolean isBloquante(Map<String, Object> anomalie) {
-    Integer legacyWeight = JSONUtil.getInteger(anomalie, "valIndispoTerrestre");
-    if (legacyWeight != null) {
-      return Integer.valueOf(BLOQUANTE_WEIGHT).equals(legacyWeight);
-    }
     Integer v3Weight = JSONUtil.getInteger(anomalie, "poidsAnomalieValIndispoTerrestre");
     return Integer.valueOf(BLOQUANTE_WEIGHT).equals(v3Weight);
   }

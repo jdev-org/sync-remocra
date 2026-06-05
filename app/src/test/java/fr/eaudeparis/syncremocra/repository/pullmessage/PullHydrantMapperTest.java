@@ -2,7 +2,6 @@ package fr.eaudeparis.syncremocra.repository.pullmessage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.PullHydrant;
 import java.util.HashMap;
@@ -10,53 +9,6 @@ import java.util.Map;
 import org.junit.Test;
 
 public class PullHydrantMapperTest {
-
-  @Test
-  public void shouldMapLegacyHydrantFields() {
-    Map<String, Object> pei = new HashMap<>();
-    pei.put("complement", "Batiment A");
-    pei.put("dispoTerrestre", "DISPO");
-    pei.put("dispoAerienne", "HBE_OK");
-    pei.put("numeroVoie", 12);
-    pei.put("suffixeVoie", "B");
-    pei.put("niveau", "SOL");
-    pei.put("voie", "Rue des Tests");
-    pei.put("carrefour", "Avenue 1");
-    pei.put("enFace", true);
-    pei.put("domaine", "PUBLIC");
-    pei.put("commune", "PARIS");
-    pei.put("nature", "PIBI");
-    pei.put("natureDeci", "POTEAU");
-    pei.put("indispoTemporaire", false);
-
-    Map<String, Object> carac = new HashMap<>();
-    carac.put("diametre", "100");
-    carac.put("marque", "BAYARD");
-    carac.put("modele", "X");
-    carac.put("diametreCanalisation", 150);
-    carac.put("anneeFabrication", "1998");
-
-    PullHydrant hydrant = PullHydrantMapper.map(pei, carac);
-
-    assertEquals("100", hydrant.getDiametre());
-    assertEquals("BAYARD", hydrant.getMarque());
-    assertEquals("X", hydrant.getModele());
-    assertEquals(Integer.valueOf(150), hydrant.getDiametreCanalisation());
-    assertEquals("1998", hydrant.getAnneeFabrication());
-    assertEquals("Batiment A", hydrant.getComplement());
-    assertEquals("DISPO", hydrant.getDispoTerrestre());
-    assertEquals("HBE_OK", hydrant.getDispoHbe());
-    assertEquals(Integer.valueOf(12), hydrant.getNumeroVoie());
-    assertEquals("B", hydrant.getSuffixeVoie());
-    assertEquals("SOL", hydrant.getNiveau());
-    assertEquals("Rue des Tests", hydrant.getVoie());
-    assertEquals("Avenue 1", hydrant.getVoie2());
-    assertTrue(hydrant.getEnFace());
-    assertEquals("PUBLIC", hydrant.getDomaine());
-    assertEquals("PARIS", hydrant.getCommune());
-    assertEquals("PIBI", hydrant.getNature());
-    assertEquals("POTEAU", hydrant.getNatureDeci());
-  }
 
   @Test
   public void shouldMapV3HydrantFields() {

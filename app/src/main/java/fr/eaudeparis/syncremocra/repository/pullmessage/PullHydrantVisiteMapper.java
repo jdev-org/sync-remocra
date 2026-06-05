@@ -6,19 +6,17 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.Map;
 
-/** Mappe les payloads de visites v2/v3 REMOcRA vers le format local historique. */
+/** Mappe les payloads de visites REMOcRA v3 vers le format local historique. */
 public final class PullHydrantVisiteMapper {
 
   private PullHydrantVisiteMapper() {}
 
   /**
-   * Résout l'identifiant de visite en acceptant les contrats v2 et v3.
-   *
    * @param visite payload de liste de visites
    * @return identifiant de visite, ou {@code null} si absent
    */
   public static Object getVisiteId(Map<String, Object> visite) {
-    return (visite.get("visiteId") != null) ? visite.get("visiteId") : visite.get("identifiant");
+    return visite.get("visiteId");
   }
 
   /**
@@ -28,9 +26,7 @@ public final class PullHydrantVisiteMapper {
    * @return type local
    */
   public static String getLocalVisitType(Map<String, Object> dataVisiteSpecifique) {
-    String typeVisite = JSONUtil.getString(dataVisiteSpecifique, "typeVisite");
-    return VisitTypeMapper.toLocalType(
-        (typeVisite != null) ? typeVisite : JSONUtil.getString(dataVisiteSpecifique, "contexte"));
+    return VisitTypeMapper.toLocalType(JSONUtil.getString(dataVisiteSpecifique, "typeVisite"));
   }
 
   /**
@@ -51,17 +47,10 @@ public final class PullHydrantVisiteMapper {
   }
 
   /**
-   * Résout la date de visite en acceptant les formats v2 et v3.
-   *
    * @param dataVisiteSpecifique payload détaillé de la visite
    * @return date locale de la visite, ou {@code null} si absente
    */
   public static LocalDateTime getVisitDate(Map<String, Object> dataVisiteSpecifique) {
-    LocalDateTime legacyDate =
-        JSONUtil.getLocalDateTime(dataVisiteSpecifique, "date", "yyyy-MM-dd HH:mm");
-    if (legacyDate != null) {
-      return legacyDate;
-    }
     String moment = JSONUtil.getString(dataVisiteSpecifique, "moment");
     if (moment == null) {
       return null;

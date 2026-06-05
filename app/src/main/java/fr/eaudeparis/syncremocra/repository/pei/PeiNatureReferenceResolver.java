@@ -4,10 +4,7 @@ import fr.eaudeparis.syncremocra.repository.message.PeiType;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Résout le type et la nature d'un PEI à partir des contrats v2/v3 et des référentiels de natures
- * REMOcRA.
- */
+/** Résout le type et la nature d'un PEI à partir du contrat REMOcRA v3. */
 public final class PeiNatureReferenceResolver {
 
   private PeiNatureReferenceResolver() {}
@@ -25,15 +22,6 @@ public final class PeiNatureReferenceResolver {
       Map<String, Object> pei,
       List<Map<String, Object>> pibiNatures,
       List<Map<String, Object>> penaNatures) {
-    String legacyType = valueAsString(pei.get("type"));
-    String legacyNature = valueAsString(pei.get("nature"));
-    if ("PIBI".equalsIgnoreCase(legacyType) && legacyNature != null) {
-      return new PeiNatureReference(PeiType.PIBI, legacyNature);
-    }
-    if ("PENA".equalsIgnoreCase(legacyType) && legacyNature != null) {
-      return new PeiNatureReference(PeiType.PENA, legacyNature);
-    }
-
     String natureId = valueAsString(pei.get("peiNatureId"));
     if (natureId == null) {
       return null;

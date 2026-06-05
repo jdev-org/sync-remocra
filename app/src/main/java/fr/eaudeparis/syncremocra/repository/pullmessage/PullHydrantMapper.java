@@ -5,7 +5,7 @@ import fr.eaudeparis.syncremocra.util.JSONUtil;
 import java.util.Map;
 
 /**
- * Mappe les réponses REMOcRA v2/v3 vers le schéma applicatif local des hydrants en attente.
+ * Mappe les réponses REMOcRA v3 vers le schéma applicatif local des hydrants en attente.
  *
  * <p>La base locale conserve encore le modèle historique. Tant que le schéma n'évolue pas, les
  * identifiants v3 de type UUID ou code sont donc stockés tels quels dans les colonnes texte
@@ -25,29 +25,28 @@ public final class PullHydrantMapper {
    */
   public static PullHydrant map(Map<String, Object> dataPei, Map<String, Object> dataPeiCarac) {
     PullHydrant hydrant = new PullHydrant();
-    hydrant.setDiametre(getString(dataPeiCarac, "diametre", "pibiDiametreId"));
-    hydrant.setMarque(getString(dataPeiCarac, "marque", "pibiMarqueId"));
-    hydrant.setModele(getString(dataPeiCarac, "modele", "pibiModeleId"));
-    hydrant.setDiametreCanalisation(
-        getInteger(dataPeiCarac, "diametreCanalisation", "pibiDiametreCanalisation"));
-    hydrant.setAnneeFabrication(getString(dataPeiCarac, "anneeFabrication", "peiAnneeFabrication"));
+    hydrant.setDiametre(getString(dataPeiCarac, "pibiDiametreId"));
+    hydrant.setMarque(getString(dataPeiCarac, "pibiMarqueId"));
+    hydrant.setModele(getString(dataPeiCarac, "pibiModeleId"));
+    hydrant.setDiametreCanalisation(getInteger(dataPeiCarac, "pibiDiametreCanalisation"));
+    hydrant.setAnneeFabrication(getString(dataPeiCarac, "peiAnneeFabrication"));
     if (hydrant.getAnneeFabrication() == null) {
-      hydrant.setAnneeFabrication(getString(dataPei, "anneeFabrication", "peiAnneeFabrication"));
+      hydrant.setAnneeFabrication(getString(dataPei, "peiAnneeFabrication"));
     }
-    hydrant.setComplement(getString(dataPei, "complement", "peiComplementAdresse"));
-    hydrant.setDispoTerrestre(getString(dataPei, "dispoTerrestre", "peiDisponibiliteTerrestre"));
-    hydrant.setDispoHbe(getString(dataPei, "dispoAerienne", "penaDisponibiliteHbe"));
-    hydrant.setNumeroVoie(getInteger(dataPei, "numeroVoie", "peiNumeroVoie"));
-    hydrant.setSuffixeVoie(getString(dataPei, "suffixeVoie", "peiSuffixeVoie"));
-    hydrant.setNiveau(getString(dataPei, "niveau", "peiNiveauId"));
-    hydrant.setVoie(getString(dataPei, "voie", "peiVoieTexte"));
-    hydrant.setVoie2(getString(dataPei, "carrefour", "peiCroisementId"));
-    hydrant.setEnFace(getBoolean(dataPei, "enFace", "peiEnFace"));
-    hydrant.setDomaine(getString(dataPei, "domaine", "peiDomaineId"));
-    hydrant.setCommune(getString(dataPei, "commune", "peiCommuneId"));
-    hydrant.setNature(getString(dataPei, "nature", "peiNatureId"));
-    hydrant.setNatureDeci(getString(dataPei, "natureDeci", "peiNatureDeciId"));
-    hydrant.setIndispoTemporaire(getBoolean(dataPei, "indispoTemporaire", "peiIndispoTemporaire"));
+    hydrant.setComplement(getString(dataPei, "peiComplementAdresse"));
+    hydrant.setDispoTerrestre(getString(dataPei, "peiDisponibiliteTerrestre"));
+    hydrant.setDispoHbe(getString(dataPei, "penaDisponibiliteHbe"));
+    hydrant.setNumeroVoie(getInteger(dataPei, "peiNumeroVoie"));
+    hydrant.setSuffixeVoie(getString(dataPei, "peiSuffixeVoie"));
+    hydrant.setNiveau(getString(dataPei, "peiNiveauId"));
+    hydrant.setVoie(getString(dataPei, "peiVoieTexte"));
+    hydrant.setVoie2(getString(dataPei, "peiCroisementId"));
+    hydrant.setEnFace(getBoolean(dataPei, "peiEnFace"));
+    hydrant.setDomaine(getString(dataPei, "peiDomaineId"));
+    hydrant.setCommune(getString(dataPei, "peiCommuneId"));
+    hydrant.setNature(getString(dataPei, "peiNatureId"));
+    hydrant.setNatureDeci(getString(dataPei, "peiNatureDeciId"));
+    hydrant.setIndispoTemporaire(getBoolean(dataPei, "peiIndispoTemporaire"));
     return hydrant;
   }
 

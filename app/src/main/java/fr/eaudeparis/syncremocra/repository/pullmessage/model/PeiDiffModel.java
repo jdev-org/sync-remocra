@@ -1,37 +1,37 @@
 package fr.eaudeparis.syncremocra.repository.pullmessage.model;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Date;
 
 /**
  * Modèle local des modifications PEI.
  *
- * <p>Cette classe absorbe à la fois le contrat historique et le contrat REMOcRA v3 afin de
- * conserver des accesseurs stables dans le reste du code pendant la migration.
+ * <p>Cette classe conserve des accesseurs stables pour le reste du code tout en désérialisant le
+ * contrat REMOcRA v3.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PeiDiffModel {
 
-  @JsonAlias({"numero", "numeroComplet"})
+  @JsonProperty("numeroComplet")
   private String numero;
 
-  @JsonAlias({"dateModification", "momentModification"})
+  @JsonProperty("momentModification")
   private Date dateModification;
 
   private String utilisateurModification;
 
   private String utilisateurModificationOrganisme;
 
-  @JsonAlias({"organismeModification", "auteurModification"})
+  @JsonProperty("auteurModification")
   private String organismeModification;
 
   private String auteurModificationFlag;
 
-  @JsonAlias({"operation", "typeOperation"})
+  @JsonProperty("typeOperation")
   private String operation;
 
-  @JsonAlias({"type", "typeObjet"})
+  @JsonProperty("typeObjet")
   private String type;
 
   private Auteur auteur;
@@ -148,7 +148,7 @@ public class PeiDiffModel {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   public static class Auteur {
-    @JsonAlias("typeSourceModification")
+    @JsonProperty("typeSourceModification")
     private String typeSourceModification;
 
     public String getTypeSourceModification() {

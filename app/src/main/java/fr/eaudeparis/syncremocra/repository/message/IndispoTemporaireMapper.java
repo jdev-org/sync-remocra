@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Mappe les indisponibilités temporaires entre les contrats REMOcRA v2/v3 et SyncRemocra. */
+/** Mappe les indisponibilités temporaires REMOcRA v3 vers SyncRemocra. */
 public final class IndispoTemporaireMapper {
 
   private static final String ORGANISME_API = "EAU_DE_PARIS";
@@ -89,27 +89,19 @@ public final class IndispoTemporaireMapper {
   }
 
   /**
-   * Récupère l'identifiant d'une indisponibilité en acceptant les contrats v2 et v3.
-   *
    * @param indispo indisponibilité retournée par REMOcRA
    * @return identifiant d'indisponibilité, ou {@code null} si absent
    */
   public static Object getIndispoId(Map<String, Object> indispo) {
-    Object indispoId = indispo.get("indisponibiliteTemporaireId");
-    return (indispoId != null) ? indispoId : indispo.get("identifiant");
+    return indispo.get("indisponibiliteTemporaireId");
   }
 
   /**
-   * Récupère la date de début d'une indisponibilité en acceptant les contrats v2 et v3.
-   *
    * @param indispo indisponibilité retournée par REMOcRA
    * @return date de début au format attendu par l'API
    */
   public static String getDateDebut(Map<String, Object> indispo) {
-    String legacyDate = JSONUtil.getString(indispo, "date_debut");
-    return (legacyDate != null)
-        ? legacyDate
-        : JSONUtil.getString(indispo, "indisponibiliteTemporaireDateDebut");
+    return JSONUtil.getString(indispo, "indisponibiliteTemporaireDateDebut");
   }
 
   private static boolean containsReference(Map<String, Object> indispo, String reference) {
@@ -131,27 +123,17 @@ public final class IndispoTemporaireMapper {
       }
     }
 
-    Object hydrants = indispo.get("hydrants");
-    if (hydrants instanceof List<?>) {
-      for (Object pei : (List<?>) hydrants) {
-        if (reference.equals(String.valueOf(pei))) {
-          return true;
-        }
-      }
-      return false;
-    }
-    return hydrants != null && hydrants.toString().contains(reference);
+    return false;
   }
 
   private static boolean isActive(Map<String, Object> indispo) {
-    return JSONUtil.getString(indispo, "date_fin") == null
-        && JSONUtil.getString(indispo, "indisponibiliteTemporaireDateFin") == null;
+    return JSONUtil.getString(indispo, "indisponibiliteTemporaireDateFin") == null;
   }
 
   private static ArrayNode createPeiList(ObjectMapper mapper, String reference) {
-    ArrayNode hydrants = mapper.createArrayNode();
-    hydrants.add(reference);
-    return hydrants;
+    ArrayNode peiList = mapper.createArrayNode();
+    peiList.add(reference);
+    return peiList;
   }
 
   private static String formatApiDate(LocalDateTime date) {

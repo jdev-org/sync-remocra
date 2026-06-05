@@ -9,7 +9,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,40 +34,28 @@ public class IndispoTemporaireMapperTest {
   }
 
   @Test
-  public void shouldBuildV3UpdatePayloadFromLegacyOrV3Indispo() {
-    Map<String, Object> legacyIndispo = new HashMap<>();
-    legacyIndispo.put("identifiant", "42");
-    legacyIndispo.put("date_debut", "2026-06-05 09:00");
-
-    ObjectNode legacyPayload =
-        IndispoTemporaireMapper.buildUpdatePayload(
-            mapper, "PEI-001", legacyIndispo, LocalDateTime.of(2026, 6, 5, 11, 30));
-
-    assertEquals("2026-06-05 09:00", legacyPayload.get("dateDebut").asText());
-    assertTrue(legacyPayload.get("dateFin").asText().startsWith("2026-06-05T11:30:00"));
-    assertEquals("42", String.valueOf(IndispoTemporaireMapper.getIndispoId(legacyIndispo)));
-
+  public void shouldBuildV3UpdatePayload() {
     Map<String, Object> v3Indispo = new HashMap<>();
     v3Indispo.put("indisponibiliteTemporaireId", "uuid-1");
     v3Indispo.put("indisponibiliteTemporaireDateDebut", "2026-06-05T09:00:00+02:00");
 
+    ObjectNode payload =
+        IndispoTemporaireMapper.buildUpdatePayload(
+            mapper, "PEI-001", v3Indispo, LocalDateTime.of(2026, 6, 5, 11, 30));
+
+    assertEquals("2026-06-05T09:00:00+02:00", payload.get("dateDebut").asText());
+    assertTrue(payload.get("dateFin").asText().startsWith("2026-06-05T11:30:00"));
     assertEquals("uuid-1", String.valueOf(IndispoTemporaireMapper.getIndispoId(v3Indispo)));
     assertEquals("2026-06-05T09:00:00+02:00", IndispoTemporaireMapper.getDateDebut(v3Indispo));
   }
 
   @Test
-  public void shouldFindActiveIndispoAcrossLegacyAndV3Contracts() {
+  public void shouldFindActiveIndispoFromV3Contract() {
     List<Map<String, Object>> indispos = new ArrayList<Map<String, Object>>();
-
-    Map<String, Object> legacyInactive = new HashMap<>();
-    legacyInactive.put("identifiant", "1");
-    legacyInactive.put("hydrants", Arrays.asList("PEI-001"));
-    legacyInactive.put("date_fin", "2026-06-05 08:00");
-    indispos.add(legacyInactive);
 
     Map<String, Object> v3Active = new HashMap<>();
     v3Active.put("indisponibiliteTemporaireId", "uuid-1");
-    v3Active.put("listeNumeroPei", Arrays.asList("PEI-001", "PEI-002"));
+    v3Active.put("listeNumeroPei", List.of("PEI-001", "PEI-002"));
     v3Active.put("indisponibiliteTemporaireDateDebut", "2026-06-05T09:00:00+02:00");
     indispos.add(v3Active);
 

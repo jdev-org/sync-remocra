@@ -46,19 +46,17 @@ public class RemocraVisitesContractTest {
 
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext(
-        "/authentication/jwt",
+        "/realms/remocra/protocol/openid-connect/token",
         exchange -> {
           authCalls.incrementAndGet();
-          exchange.getResponseHeaders().add("Authorization", "Bearer legacy-token");
-          respond(exchange, 200, "");
+          respond(exchange, 200, "{\"access_token\":\"kc-token\",\"expires_in\":300}");
         });
     server.createContext(
         "/deci/pei/PEI-001/visites",
         exchange -> {
           visitCalls.incrementAndGet();
           assertEquals("POST", exchange.getRequestMethod());
-          assertEquals(
-              "Bearer legacy-token", exchange.getRequestHeaders().getFirst("Authorization"));
+          assertEquals("Bearer kc-token", exchange.getRequestHeaders().getFirst("Authorization"));
 
           String body =
               new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
@@ -97,11 +95,8 @@ public class RemocraVisitesContractTest {
   public void shouldReadVisitsUsingV3Contract() throws Exception {
     server = HttpServer.create(new InetSocketAddress(0), 0);
     server.createContext(
-        "/authentication/jwt",
-        exchange -> {
-          exchange.getResponseHeaders().add("Authorization", "Bearer legacy-token");
-          respond(exchange, 200, "");
-        });
+        "/realms/remocra/protocol/openid-connect/token",
+        exchange -> respond(exchange, 200, "{\"access_token\":\"kc-token\",\"expires_in\":300}"));
     server.createContext(
         "/deci/pei/PEI-001/visites",
         exchange ->
@@ -155,8 +150,11 @@ public class RemocraVisitesContractTest {
     return new RequestManager(
         ImmutableApiSettings.builder()
             .host(serverBaseUrl())
-            .mail("test@example.com")
-            .password("secret")
+            .authType("keycloak")
+            .keycloakUrl(serverBaseUrl())
+            .keycloakRealm("remocra")
+            .keycloakClientId("sync-remocra")
+            .keycloakClientSecret("top-secret")
             .build(),
         apiEndpoints,
         (codeErreur, message, idMessage) -> {});
