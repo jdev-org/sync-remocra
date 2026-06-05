@@ -14,7 +14,6 @@ import fr.eaudeparis.syncremocra.repository.pei.model.VuePeiEdpRemocraFilter;
 import fr.eaudeparis.syncremocra.repository.pei.model.VuePeiEdpRemocraSort;
 import fr.eaudeparis.syncremocra.util.APIAuthentException;
 import fr.eaudeparis.syncremocra.util.APIConnectionException;
-import fr.eaudeparis.syncremocra.util.JSONUtil;
 import fr.eaudeparis.syncremocra.util.RequestException;
 import fr.eaudeparis.syncremocra.util.RequestManager;
 import java.util.ArrayList;
@@ -143,16 +142,20 @@ public class PeiRepository {
     TypeReference<ArrayList<Map<String, Object>>> typeRefAnomalies =
         new TypeReference<ArrayList<Map<String, Object>>>() {};
     for (Map<String, Object> anomalie : mapper.readValue(dataAnomalies, typeRefAnomalies)) {
-      String code = JSONUtil.getString(anomalie, "code");
-      Integer valIndispo = JSONUtil.getInteger(anomalie, "valIndispoTerrestre");
+      String code = RemocraAnomalieMapper.getCode(anomalie);
+      boolean bloquanteAnomalie = RemocraAnomalieMapper.isBloquante(anomalie);
+      boolean supportsTypeVisite = RemocraAnomalieMapper.supportsTypeVisite(anomalie, typeVisite);
       // Si le paramatetre bloquante et a true
       // on ne renvoi que les anomalies BLOQUANTE (valindispo ==5)
       if ((code != null && code.length() > 0 && !anomalies.contains(code))
           && bloquante
-          && Integer.valueOf(5).equals(valIndispo)) {
+          && bloquanteAnomalie
+          && supportsTypeVisite) {
         anomalies.add(code);
         // Sinon on renvois TOUT les anomalies accessible pour tel contexte de visite
-      } else if ((code != null && code.length() > 0 && !anomalies.contains(code)) && !bloquante) {
+      } else if ((code != null && code.length() > 0 && !anomalies.contains(code))
+          && !bloquante
+          && supportsTypeVisite) {
         anomalies.add(code);
       }
     }
