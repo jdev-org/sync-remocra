@@ -60,7 +60,7 @@ public class PullMessageRepository {
 
       logger.info("Récupération des modifications depuis " + date);
       Map<String, String> params = new HashMap<String, String>();
-      params.put("date", date);
+      params.put("moment", date);
       String json = this.requestManager.sendGetRequest(apiEndpoints.peiDiff(), params);
 
       ObjectMapper objectMapper = new ObjectMapper();
@@ -89,8 +89,10 @@ public class PullMessageRepository {
                   || pei.getDateModification().compareTo(modifVisites.getDateModification()) > 0)) {
             modifVisites = pei;
           } else if ("CARACTERISTIQUES".equals(pei.getType())
-              && (modifVisites == null
-                  || pei.getDateModification().compareTo(modifVisites.getDateModification()) > 0)) {
+              && (modifCaracteristiques == null
+                  || pei.getDateModification()
+                          .compareTo(modifCaracteristiques.getDateModification())
+                      > 0)) {
             modifCaracteristiques = pei;
           }
         }
@@ -180,11 +182,7 @@ public class PullMessageRepository {
 
     // Si les données n'ont pas été modifiées par l'organisme courant (ou un de ses utilisateurs, on
     // remonte l'info
-    if ((("ETL".equals(modif.getAuteurModificationFlag())
-                || "USER".equals(modif.getAuteurModificationFlag()))
-            && !modif.getUtilisateurModificationOrganisme().equals(nomOrganisme))
-        || ("API".equals(modif.getAuteurModificationFlag())
-            && !modif.getOrganismeModification().equals(nomOrganisme))) {
+    if (!modif.isModifiedByCurrentOrganisme(nomOrganisme)) {
 
       this.recuperationVisites(modif.getNumero());
 
