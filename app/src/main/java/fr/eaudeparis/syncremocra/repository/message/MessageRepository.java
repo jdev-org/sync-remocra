@@ -28,7 +28,6 @@ import fr.eaudeparis.syncremocra.repository.typeErreur.model.TypeErreurModel;
 import fr.eaudeparis.syncremocra.util.APIAuthentException;
 import fr.eaudeparis.syncremocra.util.APIConnectionException;
 import fr.eaudeparis.syncremocra.util.InternalException;
-import fr.eaudeparis.syncremocra.util.JSONUtil;
 import fr.eaudeparis.syncremocra.util.RequestException;
 import fr.eaudeparis.syncremocra.util.RequestManager;
 import java.net.HttpURLConnection;
@@ -39,7 +38,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
@@ -333,40 +331,30 @@ public class MessageRepository {
             .fetchOneInto(TracabilitePei.class);
 
     // On récupère l'éventuelle indispo temporaire en cours
-    Map<String, String> params = new HashMap<String, String>();
-    params.put("organismeApi", "EAU_DE_PARIS");
-    params.put("numeroHydrant", reference);
-    params.put("statut", "EN_COURS");
     String indispoEnCours =
-        this.requestManager.sendGetRequest(apiEndpoints.indispoTemporaire(), params);
+        this.requestManager.sendGetRequest(
+            apiEndpoints.indispoTemporaire(), IndispoTemporaireMapper.buildSearchParams());
+    TypeReference<ArrayList<Map<String, Object>>> typeRef =
+        new TypeReference<ArrayList<Map<String, Object>>>() {};
+    ArrayList<Map<String, Object>> dataIndispoEnCours = mapper.readValue(indispoEnCours, typeRef);
+    Map<String, Object> indispoActive =
+        IndispoTemporaireMapper.findActiveIndispo(dataIndispoEnCours, reference);
 
     // Si Indisponible, on créé une indispo temporaire s'il n'en existe pas déjà une
     // sur ce PEI
     if ("Indisponible".equalsIgnoreCase(traca.getEtat())) {
-      if (indispoEnCours.length() <= 2) { // Null ou tableau vide
+      if (indispoActive == null) {
         logger.info("PEI " + reference + " indisponible - Création d'une indispo temporaire EDP");
         indispoTemp.put("methode", "POST");
         indispoTemp.put("path", apiEndpoints.indispoTemporaire());
-        ObjectNode data = mapper.createObjectNode();
-        ArrayNode hydrants = mapper.createArrayNode();
-        hydrants.add(reference);
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         try {
-          data.put("date_debut", traca.getDateMajE().format(formatter));
+          indispoTemp.set(
+              "data",
+              IndispoTemporaireMapper.buildCreatePayload(mapper, reference, traca.getDateMajE()));
         } catch (Exception e) {
           logger.error("Le champ date_maj_e présente une anomalie (traca " + traca.getId() + ")");
           throw e;
         }
-        data.put("motif", "Mise en indisponibilité Eau de Paris");
-        data.put("statut", "PLANIFIE");
-        data.put("bascule_auto_dispo", true);
-        data.put("bascule_auto_indispo", true);
-        data.put("mel_avant_dispo", true);
-        data.put("mel_avant_indispo", true);
-        data.set("hydrants", hydrants);
-
-        indispoTemp.set("data", data);
 
         this.remonteeMotifsIndispo(message, reference);
         return indispoTemp;
@@ -389,7 +377,7 @@ public class MessageRepository {
         .equalsIgnoreCase(
             traca
                 .getEtat())) { // Si disponible, on met fin à l'indispo temporaire active sur ce pei
-      if (indispoEnCours.length() <= 2) {
+      if (indispoActive == null) {
         logger.info(
             "PEI "
                 + reference
@@ -402,28 +390,15 @@ public class MessageRepository {
             .execute();
       } else {
         logger.info("PEI " + reference + " disponible - Fin de l'indispo temporaire EDP active");
-        TypeReference<ArrayList<Map<String, Object>>> typeRef =
-            new TypeReference<ArrayList<Map<String, Object>>>() {};
-        ArrayList<Map<String, Object>> dataIndispoEnCours =
-            mapper.readValue(indispoEnCours, typeRef);
-        Long idIndispoTemp = JSONUtil.getLong(dataIndispoEnCours.get(0), "identifiant");
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
         indispoTemp.put("methode", "PUT");
-        indispoTemp.put("path", apiEndpoints.indispoTemporaire(idIndispoTemp));
+        indispoTemp.put(
+            "path",
+            apiEndpoints.indispoTemporaire(IndispoTemporaireMapper.getIndispoId(indispoActive)));
 
-        ObjectNode data = mapper.createObjectNode();
-
-        data.put("date_debut", JSONUtil.getString(dataIndispoEnCours.get(0), "date_debut"));
-        data.put("date_fin", traca.getDateMajE().format(formatter));
-        data.put("motif", "Mise en indisponibilité Eau de Paris");
-        data.put("statut", "EN_COURS");
-        data.put("bascule_auto_dispo", true);
-        data.put("bascule_auto_indispo", true);
-        data.put("mel_avant_dispo", true);
-        data.put("mel_avant_indispo", true);
-
-        indispoTemp.set("data", data);
+        indispoTemp.set(
+            "data",
+            IndispoTemporaireMapper.buildUpdatePayload(
+                mapper, reference, indispoActive, traca.getDateMajE()));
         this.remonteeMotifsIndispo(message, reference);
         return indispoTemp;
       }
