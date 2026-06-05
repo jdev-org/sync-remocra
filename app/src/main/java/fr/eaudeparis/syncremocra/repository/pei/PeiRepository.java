@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.VuePeiEdpRemocra;
 import fr.eaudeparis.syncremocra.repository.RepositoryUtil;
+import fr.eaudeparis.syncremocra.repository.message.PeiType;
 import fr.eaudeparis.syncremocra.repository.model.SortOrder;
 import fr.eaudeparis.syncremocra.repository.pei.model.VuePeiEdpRemocraFilter;
 import fr.eaudeparis.syncremocra.repository.pei.model.VuePeiEdpRemocraSort;
@@ -96,7 +97,7 @@ public class PeiRepository {
    * nature, et par la configuration qui a été réalisée sur REMOcRA
    *
    * @param reference La référence du PEI
-   * @param contexte Le contexte de visite (code du type de saisie)
+   * @param typeVisite Le type de visite REMOcRA
    * @param bloquante Seulement les anomalies bloquantes ou non
    * @return Un arraylist contenant les codes des anomalies qui sont accessibles
    * @throws RequestException Une erreur a été renvoyée par l'API
@@ -106,25 +107,36 @@ public class PeiRepository {
    * @throws APIAuthentException Impossible de s'authentifier sur l'API
    */
   public ArrayList<String> getNaturesAnomaliesAccessibles(
-      String reference, String contexte, boolean bloquante)
+      String reference, String typeVisite, boolean bloquante)
       throws RequestException, JsonProcessingException, APIConnectionException,
           APIAuthentException {
     String dataPei = this.requestManager.sendGetRequest(apiEndpoints.pei(reference));
+    String dataNaturesPibi =
+        this.requestManager.sendGetRequest(
+            apiEndpoints.referentielNaturesPei(PeiType.PIBI.getApiValue()));
+    String dataNaturesPena =
+        this.requestManager.sendGetRequest(
+            apiEndpoints.referentielNaturesPei(PeiType.PENA.getApiValue()));
 
     ObjectMapper mapper = new ObjectMapper();
     TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
     Map<String, Object> data = mapper.readValue(dataPei, typeRef);
+    TypeReference<List<Map<String, Object>>> listTypeRef =
+        new TypeReference<List<Map<String, Object>>>() {};
+    List<Map<String, Object>> pibiNatures = mapper.readValue(dataNaturesPibi, listTypeRef);
+    List<Map<String, Object>> penaNatures = mapper.readValue(dataNaturesPena, listTypeRef);
 
-    String type = null;
-    String nature = JSONUtil.getString(data, "nature");
-    if ("PIBI".equalsIgnoreCase(JSONUtil.getString(data, "type"))) {
-      type = "pibi";
-    } else if ("PENA".equalsIgnoreCase(JSONUtil.getString(data, "type"))) {
-      type = "pena";
+    PeiNatureReference peiReference =
+        PeiNatureReferenceResolver.resolve(data, pibiNatures, penaNatures);
+    if (peiReference == null) {
+      return new ArrayList<String>();
     }
 
     String path =
-        apiEndpoints.referentielNaturesAnomalies(type, nature) + "?contexteVisite=" + contexte;
+        apiEndpoints.referentielNaturesAnomalies(
+                peiReference.getPeiType().getApiValue(), peiReference.getNatureCode())
+            + "?typeVisite="
+            + typeVisite;
     String dataAnomalies = this.requestManager.sendGetRequest(path);
     ArrayList<String> anomalies = new ArrayList<String>();
 

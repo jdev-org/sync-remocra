@@ -366,7 +366,7 @@ public class PullMessageRepository {
     for (Map<String, Object> visite : dataVisites) {
       String jsonVisiteSpecifique =
           this.requestManager.sendGetRequest(
-              apiEndpoints.peiVisite(pei.getNumero(), visite.get("identifiant")));
+              apiEndpoints.peiVisite(pei.getNumero(), PullHydrantVisiteMapper.getVisiteId(visite)));
       Map<String, Object> dataVisiteSpecifique =
           mapper.readValue(jsonVisiteSpecifique, typeRefKeyValue);
 
@@ -377,8 +377,10 @@ public class PullMessageRepository {
               .set(PULL_HYDRANT_VISITE.HYDRANT, Long.valueOf(pei.getId()))
               .set(
                   PULL_HYDRANT_VISITE.DATE,
-                  JSONUtil.getLocalDateTime(dataVisiteSpecifique, "date", "yyyy-MM-dd HH:mm"))
-              .set(PULL_HYDRANT_VISITE.TYPE, JSONUtil.getString(dataVisiteSpecifique, "contexte"))
+                  PullHydrantVisiteMapper.getVisitDate(dataVisiteSpecifique))
+              .set(
+                  PULL_HYDRANT_VISITE.TYPE,
+                  PullHydrantVisiteMapper.getLocalVisitType(dataVisiteSpecifique))
               .set(
                   PULL_HYDRANT_VISITE.CTRL_DEBIT_PRESSION,
                   JSONUtil.getBoolean(dataVisiteSpecifique, "ctrlDebitPression"))
@@ -393,10 +395,12 @@ public class PullMessageRepository {
                   JSONUtil.getDouble(dataVisiteSpecifique, "pression"))
               .set(
                   PULL_HYDRANT_VISITE.PRESSION_DYN,
-                  JSONUtil.getDouble(dataVisiteSpecifique, "pressionDyn"))
+                  PullHydrantVisiteMapper.getDouble(
+                      dataVisiteSpecifique, "pressionDyn", "pressionDynamique"))
               .set(
                   PULL_HYDRANT_VISITE.PRESSION_DYN_DEB,
-                  JSONUtil.getDouble(dataVisiteSpecifique, "pressionDynDeb"))
+                  PullHydrantVisiteMapper.getDouble(
+                      dataVisiteSpecifique, "pressionDynDeb", "pressionDynamiqueDebitMax"))
               .set(
                   PULL_HYDRANT_VISITE.OBSERVATIONS,
                   JSONUtil.getString(dataVisiteSpecifique, "observations"))

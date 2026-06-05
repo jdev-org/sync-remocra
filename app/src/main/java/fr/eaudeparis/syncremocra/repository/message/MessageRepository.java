@@ -145,7 +145,13 @@ public class MessageRepository {
           methode = "POST";
         }
 
-        String json = mapper.writeValueAsString(data);
+        ObjectNode trackedData =
+            ("SPECIFIQUE".equalsIgnoreCase(message.getType())
+                    || "MANUELLE".equalsIgnoreCase(message.getType()))
+                ? VisitPayloadTracker.toTrackedPayload(data)
+                : data;
+        String json = mapper.writeValueAsString(trackedData);
+        String requestJson = mapper.writeValueAsString(data);
 
         context
             .update(MESSAGE)
@@ -158,7 +164,7 @@ public class MessageRepository {
          * a déjà été traitée par RequestManager (éventuellement par une ResponseException)
          */
         if (methode != null && path != null && json != null) {
-          Integer codeRetour = this.requestManager.sendRequest(methode, path, json);
+          Integer codeRetour = this.requestManager.sendRequest(methode, path, requestJson);
 
           if (codeRetour != null
               && (codeRetour == HttpURLConnection.HTTP_CREATED
@@ -637,13 +643,13 @@ public class MessageRepository {
         }
       }
 
-      visite.put("contexte", "NP");
+      visite.put("typeVisite", "NP");
       visite.put("date", formatter.format(dateChangement));
       visite.set("anomaliesControlees", arrayAnomaliesControlees);
       visite.set("anomaliesConstatees", arrayAnomaliesConstatees);
       visite.put("agent1", "Eau de Paris");
 
-      String json = mapper.writeValueAsString(visite);
+      String json = mapper.writeValueAsString(VisitPayloadTracker.toTrackedPayload(visite));
       logger.info("JSON remontée des motifs d'indispo : " + json);
       context
           .update(MESSAGE)
@@ -813,13 +819,10 @@ public class MessageRepository {
    * @return Un json contenant les données de la visite à envoyer à Remocra
    */
   private ObjectNode traiterMessageSpecifique(MessageModel message, String reference)
-      throws APIConnectionException, RequestException, JsonProcessingException,
-          APIAuthentException {
+      throws APIConnectionException, RequestException, JsonProcessingException, APIAuthentException,
+          InternalException {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode visite = mapper.createObjectNode();
-
-    ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();
-    ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
 
     TracabilitePei traca =
         context
@@ -828,18 +831,26 @@ public class MessageRepository {
             .fetchOneInto(TracabilitePei.class);
 
     String typeDerniereVisite = traca.getTypeDerniereVisite().toUpperCase();
+    String typeVisite = VisitTypeMapper.toRemocraType(typeDerniereVisite);
 
-    if (typeDerniereVisite.startsWith("PICF")) {
-      visite.put("contexte", "CTRL");
-    } else if (typeDerniereVisite.startsWith("PIQP")) {
-      visite.put("contexte", "CTRL");
-      visite = this.recuperationsValeursDebitPression(visite, traca);
+    if ("CTP".equals(typeVisite)) {
+      visite.put("typeVisite", "CTP");
+      if (typeDerniereVisite.startsWith("PIQP")) {
+        visite = this.recuperationsValeursDebitPression(visite, traca);
+      }
     } else if ((typeDerniereVisite.startsWith("NPQP"))) {
       // Dans le cas d'une NPQP, le comportement attendu est identique à celui d'une
       // intervention manuelle (NP avec anomalies sans débit/pression)
       return this.traiterMessageManuelle(message, reference);
-    } else if ((typeDerniereVisite.startsWith("NP"))) {
-      visite.put("contexte", "NP");
+    } else if ("NP".equals(typeVisite)) {
+      visite.put("typeVisite", "NP");
+    } else {
+      TypeErreur typeErreur =
+          context
+              .selectFrom(TYPE_ERREUR)
+              .where(TYPE_ERREUR.CODE.equal("2001"))
+              .fetchOneInto(TypeErreur.class);
+      throw new InternalException(typeErreur.getCode(), typeErreur.getMessageErreur());
     }
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -869,13 +880,10 @@ public class MessageRepository {
    * @return Un json contenant les données de la visite à envoyer à Remocra
    */
   private ObjectNode traiterMessageManuelle(MessageModel message, String reference)
-      throws APIConnectionException, RequestException, JsonProcessingException,
-          APIAuthentException {
+      throws APIConnectionException, RequestException, JsonProcessingException, APIAuthentException,
+          InternalException {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode visite = mapper.createObjectNode();
-
-    ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();
-    ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
 
     TracabilitePei traca =
         context
@@ -891,7 +899,7 @@ public class MessageRepository {
     } else {
       visite.put("date", traca.getDateEssai().format(formatter));
     }
-    visite.put("contexte", "NP");
+    visite.put("typeVisite", "NP");
     visite.put("agent1", "Eau de Paris");
     visite = this.recuperationAnomalies(visite, traca);
     return visite;
@@ -928,8 +936,8 @@ public class MessageRepository {
    * @return Les données de la visite
    */
   private ObjectNode recuperationAnomalies(ObjectNode v, TracabilitePei traca)
-      throws APIConnectionException, RequestException, JsonProcessingException,
-          APIAuthentException {
+      throws APIConnectionException, RequestException, JsonProcessingException, APIAuthentException,
+          InternalException {
     String typeDerniereVisite =
         (traca.getTypeDerniereVisite() != null)
             ? traca.getTypeDerniereVisite().toUpperCase()
@@ -940,10 +948,10 @@ public class MessageRepository {
     ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
     ArrayList<String> anomaliesBloquante =
         this.peiRepository.getNaturesAnomaliesAccessibles(
-            traca.getReference(), v.get("contexte").textValue(), true);
+            traca.getReference(), v.get("typeVisite").textValue(), true);
     ArrayList<String> toutesAnomalies =
         this.peiRepository.getNaturesAnomaliesAccessibles(
-            traca.getReference(), v.get("contexte").textValue(), false);
+            traca.getReference(), v.get("typeVisite").textValue(), false);
 
     if (typeDerniereVisite != null) {
       // Aucune anomalie
