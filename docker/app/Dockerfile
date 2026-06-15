@@ -1,7 +1,7 @@
 # --------------------
 # Build artefacts
 # --------------------
-FROM maven:3-jdk-11 as app-builder
+FROM maven:3-jdk-11 AS app-builder
 ARG APP_VERSION=
 WORKDIR /app
 USER root
@@ -17,7 +17,7 @@ RUN mvn -DnewVersion=${APP_VERSION} versions:set -DgenerateBackupPoms=true \
 # --------------------
 # Build runnable image
 # --------------------
-FROM openjdk:11-jre
+FROM eclipse-temurin:11-jre
 RUN apt-get update -y && apt-get upgrade -y && apt-get install locales htop nano -y && rm -rf /var/lib/apt/lists/*
 
 ENV LANG fr_FR.UTF-8
