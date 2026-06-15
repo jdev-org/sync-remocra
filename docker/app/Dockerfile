@@ -6,8 +6,8 @@ ARG APP_VERSION=
 WORKDIR /app
 USER root
 ENV HOME /var/maven
-ENV MAVEN_CONFIG /var/maven/.m2
-ENV MAVEN_OPTS -Duser.home=/var/maven
+ENV MAVEN_CONFIG=/var/maven/.m2
+ENV MAVEN_OPTS=-Duser.home=/var/maven
 COPY app /app/app
 COPY db  /app/db
 COPY doc /app/doc
@@ -20,8 +20,8 @@ RUN mvn -DnewVersion=${APP_VERSION} versions:set -DgenerateBackupPoms=true \
 FROM eclipse-temurin:11-jre
 RUN apt-get update -y && apt-get upgrade -y && apt-get install locales htop nano -y && rm -rf /var/lib/apt/lists/*
 
-ENV LANG fr_FR.UTF-8
-ENV TZ Europe/Paris
+ENV LANG=fr_FR.UTF-8
+ENV TZ=Europe/Paris
 
 RUN echo "fr_FR.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen fr_FR.UTF-8
 
@@ -34,8 +34,8 @@ COPY --from=app-builder /app/app/target/syncremocra-app*.jar lib/
 # Non root user
 ARG UID=1000
 ARG GID=1000
-RUN groupadd -g ${GID} edp \
-  && useradd -u ${UID} -g edp edp \
+RUN groupadd -o -g ${GID} edp \
+  && useradd -o -u ${UID} -g ${GID} edp \
   && chown -R edp /app
 USER edp
 
