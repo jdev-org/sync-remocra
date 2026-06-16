@@ -187,8 +187,7 @@ public class RequestManager {
       int codeRetour = conn.getResponseCode();
       logger.debug("Code return" + codeRetour);
 
-      if (codeRetour == HttpURLConnection.HTTP_OK
-          || codeRetour == HttpURLConnection.HTTP_CREATED) {
+      if (codeRetour == HttpURLConnection.HTTP_OK || codeRetour == HttpURLConnection.HTTP_CREATED) {
         return codeRetour;
       } else if (codeRetour == HttpURLConnection.HTTP_UNAUTHORIZED) {
         logAuthenticationFailure(method, path, codeRetour, readStream(conn.getErrorStream()));
@@ -252,8 +251,7 @@ public class RequestManager {
 
       int codeRetour = conn.getResponseCode();
 
-      if (codeRetour == HttpURLConnection.HTTP_OK
-          || codeRetour == HttpURLConnection.HTTP_CREATED) {
+      if (codeRetour == HttpURLConnection.HTTP_OK || codeRetour == HttpURLConnection.HTTP_CREATED) {
         response = readStream(conn.getInputStream());
         logger.debug("get response  : " + response);
         return response;
@@ -415,7 +413,10 @@ public class RequestManager {
       String method, String path, int statusCode, String responseBody) {
     logger.warn(
         "HTTP {} lors de l'appel {} {}. Reponse: {}",
-        statusCode, method, path, normalizeResponseBody(responseBody));
+        statusCode,
+        method,
+        path,
+        normalizeResponseBody(responseBody));
   }
 
   /**
