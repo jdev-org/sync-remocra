@@ -260,6 +260,45 @@ public class RequestManagerTest {
     throw new AssertionError("Expected RequestException");
   }
 
+  @Test
+  public void shouldRaiseAuthenticationErrorWhenApiReturnsUnauthorized() throws Exception {
+    List<ReportedError> reportedErrors = new ArrayList<>();
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext(
+        "/realms/remocra/protocol/openid-connect/token",
+        exchange -> respond(exchange, 200, "{\"access_token\":\"kc-token\",\"expires_in\":300}"));
+    server.createContext("/remocra/deci/pei/751190852", exchange -> respond(exchange, 401, ""));
+    server.start();
+
+    fr.eaudeparis.syncremocra.util.RequestManager requestManager =
+        new fr.eaudeparis.syncremocra.util.RequestManager(
+            ImmutableApiSettings.builder()
+                .host(serverBaseUrl())
+                .basePath("/remocra")
+                .authType("keycloak")
+                .keycloakUrl(serverBaseUrl())
+                .keycloakRealm("remocra")
+                .keycloakClientId("sync-remocra")
+                .keycloakClientSecret("top-secret")
+                .build(),
+            new ApiEndpoints(),
+            (codeErreur, message, idMessage) ->
+                reportedErrors.add(new ReportedError(codeErreur, message, idMessage)));
+
+    boolean thrown = false;
+    try {
+      requestManager.sendGetRequest("/deci/pei/751190852");
+    } catch (fr.eaudeparis.syncremocra.util.APIAuthentException e) {
+      thrown = true;
+    }
+
+    assertTrue(thrown);
+    assertEquals(1, reportedErrors.size());
+    assertEquals("0200", reportedErrors.get(0).codeErreur);
+    assertEquals("Authentification refusée à l'API Remocra", reportedErrors.get(0).message);
+    assertEquals(null, reportedErrors.get(0).idMessage);
+  }
+
   private static final class ReportedError {
     private final String codeErreur;
     private final String message;

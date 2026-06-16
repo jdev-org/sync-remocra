@@ -187,8 +187,12 @@ public class RequestManager {
       int codeRetour = conn.getResponseCode();
       logger.debug("Code return" + codeRetour);
 
-      if (codeRetour == HttpURLConnection.HTTP_OK || codeRetour == HttpURLConnection.HTTP_CREATED) {
+      if (codeRetour == HttpURLConnection.HTTP_OK
+          || codeRetour == HttpURLConnection.HTTP_CREATED) {
         return codeRetour;
+      } else if (codeRetour == HttpURLConnection.HTTP_UNAUTHORIZED) {
+        logAuthenticationFailure(method, path, codeRetour, readStream(conn.getErrorStream()));
+        throwAuthenticationException();
       } else {
         response = readStream(conn.getErrorStream());
         throw buildRequestException(method, path, codeRetour, response);
@@ -248,10 +252,14 @@ public class RequestManager {
 
       int codeRetour = conn.getResponseCode();
 
-      if (codeRetour == HttpURLConnection.HTTP_OK || codeRetour == HttpURLConnection.HTTP_CREATED) {
+      if (codeRetour == HttpURLConnection.HTTP_OK
+          || codeRetour == HttpURLConnection.HTTP_CREATED) {
         response = readStream(conn.getInputStream());
         logger.debug("get response  : " + response);
         return response;
+      } else if (codeRetour == HttpURLConnection.HTTP_UNAUTHORIZED) {
+        logAuthenticationFailure("GET", path, codeRetour, readStream(conn.getErrorStream()));
+        throwAuthenticationException();
       } else {
         response = readStream(conn.getErrorStream());
         throw buildRequestException("GET", path, codeRetour, response);
@@ -393,6 +401,21 @@ public class RequestManager {
     logger.warn("Error  : ", e);
     reportError(API_CONNECTION_ERROR_CODE, API_CONNECTION_ERROR_MESSAGE, null);
     throw new APIConnectionException();
+  }
+
+  /**
+   * Journalise un refus d'authentification retourné par l'API métier.
+   *
+   * @param method Méthode HTTP appelée
+   * @param path Chemin relatif appelé
+   * @param statusCode Code HTTP retourné
+   * @param responseBody Corps de réponse éventuel
+   */
+  private void logAuthenticationFailure(
+      String method, String path, int statusCode, String responseBody) {
+    logger.warn(
+        "HTTP {} lors de l'appel {} {}. Reponse: {}",
+        statusCode, method, path, normalizeResponseBody(responseBody));
   }
 
   /**
