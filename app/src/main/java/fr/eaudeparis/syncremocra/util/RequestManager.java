@@ -14,6 +14,8 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +29,7 @@ public class RequestManager {
   private static final String API_CONNECTION_ERROR_CODE = "0003";
   private static final String API_CONNECTION_ERROR_MESSAGE =
       "Impossible d'établir une connexion avec l'API Remocra";
+  private static final Pattern ERROR_CODE_PATTERN = Pattern.compile("^([A-Z]?\\d{4})\\b");
   private static Logger logger = LoggerFactory.getLogger(RequestManager.class);
 
   private final ApiSettings settings;
@@ -188,11 +191,7 @@ public class RequestManager {
         return codeRetour;
       } else {
         response = readStream(conn.getErrorStream());
-
-        String errorCode = (response.split(" ").length > 0) ? response.split(" ")[0] : null;
-
-        // La requête a bien été envoyée mais l'API a retourné une erreur
-        throw new RequestException(conn.getResponseCode(), errorCode, response);
+        throw buildRequestException(method, path, codeRetour, response);
       }
     } catch (IOException e) {
       throwConnectionException(e);
@@ -255,10 +254,7 @@ public class RequestManager {
         return response;
       } else {
         response = readStream(conn.getErrorStream());
-
-        String errorCode = (response.split(" ").length > 0) ? response.split(" ")[0] : null;
-        // La requête a bien été envoyée mais l'API a retourné une erreur
-        throw new RequestException(conn.getResponseCode(), errorCode, response);
+        throw buildRequestException("GET", path, codeRetour, response);
       }
     } catch (IOException e) {
       throwConnectionException(e);
@@ -397,6 +393,52 @@ public class RequestManager {
     logger.warn("Error  : ", e);
     reportError(API_CONNECTION_ERROR_CODE, API_CONNECTION_ERROR_MESSAGE, null);
     throw new APIConnectionException();
+  }
+
+  /**
+   * Construit une exception explicite à partir d'un retour HTTP en erreur.
+   *
+   * @param method Méthode HTTP appelée
+   * @param path Chemin relatif appelé
+   * @param statusCode Code HTTP retourné
+   * @param responseBody Corps de réponse d'erreur éventuel
+   * @return Exception métier prête à être propagée
+   */
+  private RequestException buildRequestException(
+      String method, String path, int statusCode, String responseBody) {
+    String normalizedBody = normalizeResponseBody(responseBody);
+    String errorCode = extractErrorCode(normalizedBody);
+    String message =
+        String.format(
+            "HTTP %d lors de l'appel %s %s. Reponse: %s",
+            statusCode, method, path, normalizedBody);
+    logger.warn(message);
+    return new RequestException(statusCode, errorCode, message);
+  }
+
+  /**
+   * Extrait le code d'erreur métier lorsque le corps de réponse commence par un format reconnu.
+   *
+   * @param responseBody Corps de réponse HTTP
+   * @return Code métier ou {@code null}
+   */
+  private String extractErrorCode(String responseBody) {
+    Matcher matcher = ERROR_CODE_PATTERN.matcher(responseBody);
+    return matcher.find() ? matcher.group(1) : null;
+  }
+
+  /**
+   * Nettoie le corps d'erreur pour le rendre plus lisible dans les logs.
+   *
+   * @param responseBody Corps brut
+   * @return Corps nettoyé ou marqueur explicite si vide
+   */
+  private String normalizeResponseBody(String responseBody) {
+    if (responseBody == null) {
+      return "<empty>";
+    }
+    String normalized = responseBody.trim().replaceAll("\\s+", " ");
+    return normalized.isEmpty() ? "<empty>" : normalized;
   }
 
   /**

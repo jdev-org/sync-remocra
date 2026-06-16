@@ -1,6 +1,7 @@
 package fr.eaudeparis.syncremocra.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.sun.net.httpserver.HttpExchange;
@@ -218,6 +219,45 @@ public class RequestManagerTest {
     assertEquals("0200", reportedErrors.get(0).codeErreur);
     assertEquals("Authentification refusée à l'API Remocra", reportedErrors.get(0).message);
     assertEquals(null, reportedErrors.get(0).idMessage);
+  }
+
+  @Test
+  public void shouldExposeHttpContextWhenGetRequestReturnsUnexpectedErrorBody() throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext(
+        "/realms/remocra/protocol/openid-connect/token",
+        exchange -> respond(exchange, 200, "{\"access_token\":\"kc-token\",\"expires_in\":300}"));
+    server.createContext(
+        "/remocra/deci/pei/751080001",
+        exchange -> respond(exchange, 502, "<html>Bad gateway</html>"));
+    server.start();
+
+    fr.eaudeparis.syncremocra.util.RequestManager requestManager =
+        new fr.eaudeparis.syncremocra.util.RequestManager(
+            ImmutableApiSettings.builder()
+                .host(serverBaseUrl())
+                .basePath("/remocra")
+                .authType("keycloak")
+                .keycloakUrl(serverBaseUrl())
+                .keycloakRealm("remocra")
+                .keycloakClientId("sync-remocra")
+                .keycloakClientSecret("top-secret")
+                .build(),
+            new ApiEndpoints(),
+            (codeErreur, message, idMessage) -> {});
+
+    try {
+      requestManager.sendGetRequest("/deci/pei/751080001");
+    } catch (fr.eaudeparis.syncremocra.util.RequestException e) {
+      assertEquals(502, e.getCode());
+      assertNull(e.getCodeErreur());
+      assertEquals(
+          "HTTP 502 lors de l'appel GET /deci/pei/751080001. Reponse: <html>Bad gateway</html>",
+          e.getMessage());
+      return;
+    }
+
+    throw new AssertionError("Expected RequestException");
   }
 
   private static final class ReportedError {
