@@ -410,8 +410,7 @@ public class RequestManager {
     String errorCode = extractErrorCode(normalizedBody);
     String message =
         String.format(
-            "HTTP %d lors de l'appel %s %s. Reponse: %s",
-            statusCode, method, path, normalizedBody);
+            "HTTP %d lors de l'appel %s %s. Reponse: %s", statusCode, method, path, normalizedBody);
     logger.warn(message);
     return new RequestException(statusCode, errorCode, message);
   }
