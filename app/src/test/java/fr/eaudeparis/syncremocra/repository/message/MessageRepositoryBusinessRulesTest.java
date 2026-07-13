@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TracabilitePei;
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Collections;
 import org.junit.Test;
 
 public class MessageRepositoryBusinessRulesTest {
@@ -54,5 +56,23 @@ public class MessageRepositoryBusinessRulesTest {
     assertFalse(enrichedPayload.has("pression"));
     assertFalse(enrichedPayload.has("pressionDynamique"));
     assertFalse(enrichedPayload.has("debit"));
+  }
+
+  @Test
+  public void shouldCreateTemporaryUnavailabilityOnlyForAuthorizedMotifs() {
+    assertTrue(
+        MessageRepository.shouldCreateTemporaryUnavailability(
+            Arrays.asList("APPAREIL A RENOUVELER")));
+    assertTrue(
+        MessageRepository.shouldCreateTemporaryUnavailability(
+            Arrays.asList("ARRET EAU", "INACCESSIBLE : SOUS TERRASSE")));
+    assertFalse(
+        MessageRepository.shouldCreateTemporaryUnavailability(Arrays.asList("SANS EAU")));
+    assertFalse(
+        MessageRepository.shouldCreateTemporaryUnavailability(
+            Arrays.asList("APP CHANTIER", "INACCESSIBLE : DANS EMPRISE DE CHANTIER")));
+    assertFalse(
+        MessageRepository.shouldCreateTemporaryUnavailability(Collections.emptyList()));
+    assertFalse(MessageRepository.shouldCreateTemporaryUnavailability(null));
   }
 }

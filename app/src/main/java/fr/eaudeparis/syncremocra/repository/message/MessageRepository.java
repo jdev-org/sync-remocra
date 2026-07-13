@@ -330,6 +330,9 @@ public class MessageRepository {
             .selectFrom(TRACABILITE_PEI)
             .where(TRACABILITE_PEI.ID.eq(message.getId_traca_pei()))
             .fetchOneInto(TracabilitePei.class);
+    List<String> currentIndispoMotifs = getCurrentIndispoMotifs(traca);
+    boolean shouldCreateTemporaryUnavailability =
+        shouldCreateTemporaryUnavailability(currentIndispoMotifs);
 
     // On récupère l'éventuelle indispo temporaire en cours
     String indispoEnCours =
@@ -344,7 +347,35 @@ public class MessageRepository {
     // Si Indisponible, on créé une indispo temporaire s'il n'en existe pas déjà une
     // sur ce PEI
     if ("Indisponible".equalsIgnoreCase(traca.getEtat())) {
-      if (indispoActive == null) {
+      if (!shouldCreateTemporaryUnavailability) {
+        logger.info(
+            "PEI "
+                + reference
+                + " indisponible - aucun motif ne justifie une indisponibilité temporaire");
+        this.remonteeMotifsIndispo(message, reference);
+        if (indispoActive != null) {
+          logger.info(
+              "PEI "
+                  + reference
+                  + " indisponible - clôture de l'indispo temporaire existante devenue"
+                  + " invalide");
+          indispoTemp.put("methode", "PUT");
+          indispoTemp.put(
+              "path",
+              apiEndpoints.indispoTemporaire(
+                  IndispoTemporaireMapper.getIndispoId(indispoActive)));
+          indispoTemp.set(
+              "data",
+              IndispoTemporaireMapper.buildUpdatePayload(
+                  mapper, reference, indispoActive, traca.getDateMajE()));
+          return indispoTemp;
+        }
+        context
+            .update(MESSAGE)
+            .set(MESSAGE.STATUT, "TRAITE")
+            .where(MESSAGE.ID.eq(message.getId()))
+            .execute();
+      } else if (indispoActive == null) {
         logger.info("PEI " + reference + " indisponible - Création d'une indispo temporaire EDP");
         indispoTemp.put("methode", "POST");
         indispoTemp.put("path", apiEndpoints.indispoTemporaire());
@@ -405,6 +436,14 @@ public class MessageRepository {
       }
     }
     return null;
+  }
+
+  private List<String> getCurrentIndispoMotifs(TracabilitePei traca) {
+    return context
+        .select(DSL.upper(TRACABILITE_INDISPO.MOTIF_INDISPO))
+        .from(TRACABILITE_INDISPO)
+        .where(TRACABILITE_INDISPO.ID_TRACA_PEI.eq(traca.getId().longValue()))
+        .fetchInto(String.class);
   }
 
   /**
@@ -945,6 +984,37 @@ public class MessageRepository {
             .toUpperCase();
     return normalizedVisitType.contains("EN SERVICE")
         || normalizedVisitType.contains("CONTROLE REALISE");
+  }
+
+  /**
+   * @param indispoMotifs motifs d'indisponibilité remontés par WatGIS pour une synchro
+   * @return {@code true} si au moins un motif justifie une indisponibilité temporaire REMOcRA
+   */
+  static boolean shouldCreateTemporaryUnavailability(List<String> indispoMotifs) {
+    if (indispoMotifs == null || indispoMotifs.isEmpty()) {
+      return false;
+    }
+    for (String indispoMotif : indispoMotifs) {
+      if (isTemporaryUnavailabilityEligibleMotif(indispoMotif)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @param indispoMotif motif d'indisponibilité source
+   * @return {@code true} si ce motif fait partie des seuls cas métier autorisant une IT
+   */
+  static boolean isTemporaryUnavailabilityEligibleMotif(String indispoMotif) {
+    if (indispoMotif == null) {
+      return false;
+    }
+    String normalizedMotif =
+        Normalizer.normalize(indispoMotif, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "")
+            .toUpperCase();
+    return normalizedMotif.contains("ARRET EAU") || normalizedMotif.contains("RENOUVEL");
   }
 
   /**
