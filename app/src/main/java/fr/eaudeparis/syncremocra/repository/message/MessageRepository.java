@@ -32,6 +32,7 @@ import fr.eaudeparis.syncremocra.util.RequestException;
 import fr.eaudeparis.syncremocra.util.RequestManager;
 import java.net.HttpURLConnection;
 import java.text.SimpleDateFormat;
+import java.text.Normalizer;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -876,6 +877,7 @@ public class MessageRepository {
     }
     visite.put("typeVisite", "NP");
     visite.put("agent1", "Eau de Paris");
+    appendHydraulicMeasurementsIfPresent(visite, traca);
     visite = this.recuperationAnomalies(visite, traca);
     return visite;
   }
@@ -888,18 +890,61 @@ public class MessageRepository {
    * @return Les données de la visite
    */
   private ObjectNode recuperationsValeursDebitPression(ObjectNode v, TracabilitePei traca) {
-    v.put(
+    return appendHydraulicMeasurementsIfPresent(v, traca);
+  }
+
+  /**
+   * Ajoute les mesures hydrauliques à la visite lorsqu'elles sont disponibles dans la traca.
+   *
+   * @param visitPayload payload de visite à enrichir
+   * @param traca ligne de tracabilité source
+   * @return payload enrichi, inchangé si aucune mesure n'est disponible
+   */
+  static ObjectNode appendHydraulicMeasurementsIfPresent(
+      ObjectNode visitPayload, TracabilitePei traca) {
+    if (!hasHydraulicMeasurements(traca)) {
+      return visitPayload;
+    }
+    visitPayload.put(
         "pression",
         (traca.getEssaiPressionStatique() != null)
             ? traca.getEssaiPressionStatique().doubleValue()
             : null);
-    v.put(
+    visitPayload.put(
         "pressionDynamique",
         (traca.getEssaiPressionDynamique() != null)
             ? traca.getEssaiPressionDynamique().doubleValue()
             : null);
-    v.put("debit", (traca.getEssaiDebit() != null) ? traca.getEssaiDebit().intValue() : null);
-    return v;
+    visitPayload.put(
+        "debit", (traca.getEssaiDebit() != null) ? traca.getEssaiDebit().intValue() : null);
+    return visitPayload;
+  }
+
+  /**
+   * @param traca ligne de tracabilité source
+   * @return {@code true} si au moins une mesure hydraulique est disponible
+   */
+  static boolean hasHydraulicMeasurements(TracabilitePei traca) {
+    return traca != null
+        && (traca.getEssaiPressionStatique() != null
+            || traca.getEssaiPressionDynamique() != null
+            || traca.getEssaiDebit() != null);
+  }
+
+  /**
+   * @param localVisitType type de dernière visite issu de WatGIS
+   * @return {@code true} si cette visite doit lever tous les points d'attention
+   */
+  static boolean shouldClearAllAnomalies(String localVisitType) {
+    if (localVisitType == null) {
+      return false;
+    }
+    String normalizedVisitType =
+        Normalizer.normalize(localVisitType, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "")
+            .toUpperCase();
+    return normalizedVisitType.contains("EN SERVICE")
+        || normalizedVisitType.contains("CONTROLE REALISE");
   }
 
   /**
@@ -921,18 +966,14 @@ public class MessageRepository {
     ObjectMapper mapper = new ObjectMapper();
     ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();
     ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
-    ArrayList<String> anomaliesBloquante =
-        this.peiRepository.getNaturesAnomaliesAccessibles(
-            traca.getReference(), v.get("typeVisite").textValue(), true);
     ArrayList<String> toutesAnomalies =
         this.peiRepository.getNaturesAnomaliesAccessibles(
             traca.getReference(), v.get("typeVisite").textValue(), false);
 
     if (typeDerniereVisite != null) {
       // Aucune anomalie
-      if ((typeDerniereVisite.contains("EN SERVICE"))
-          || (typeDerniereVisite.contains("CONTROLE REALISE"))) {
-        for (String code : anomaliesBloquante) {
+      if (shouldClearAllAnomalies(typeDerniereVisite)) {
+        for (String code : toutesAnomalies) {
           arrayAnomaliesControlees.add(code);
         }
         v.set("anomaliesControlees", arrayAnomaliesControlees);

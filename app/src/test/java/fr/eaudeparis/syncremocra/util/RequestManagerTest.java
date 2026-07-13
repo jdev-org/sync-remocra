@@ -299,6 +299,53 @@ public class RequestManagerTest {
     assertEquals(null, reportedErrors.get(0).idMessage);
   }
 
+  @Test
+  public void shouldExposeMarqueModeleDiagnosticWhenPibiCaracteristiquesReturnsKnown500()
+      throws Exception {
+    server = HttpServer.create(new InetSocketAddress(0), 0);
+    server.createContext(
+        "/realms/remocra/protocol/openid-connect/token",
+        exchange -> respond(exchange, 200, "{\"access_token\":\"kc-token\",\"expires_in\":300}"));
+    server.createContext(
+        "/remocra/deci/pei/751010252/pibi-caracteristiques",
+        exchange ->
+            respond(exchange, 500, "Collection contains no element matching the predicate."));
+    server.start();
+
+    fr.eaudeparis.syncremocra.util.RequestManager requestManager =
+        new fr.eaudeparis.syncremocra.util.RequestManager(
+            ImmutableApiSettings.builder()
+                .host(serverBaseUrl())
+                .basePath("/remocra")
+                .authType("keycloak")
+                .keycloakUrl(serverBaseUrl())
+                .keycloakRealm("remocra")
+                .keycloakClientId("sync-remocra")
+                .keycloakClientSecret("top-secret")
+                .build(),
+            new ApiEndpoints(),
+            (codeErreur, message, idMessage) -> {});
+
+    try {
+      requestManager.sendRequest(
+          "PUT",
+          "/deci/pei/751010252/pibi-caracteristiques",
+          "{\"codeMarque\":\"PONT A MOUSSON\",\"codeModele\":\"BI PAM\"}");
+    } catch (fr.eaudeparis.syncremocra.util.RequestException e) {
+      assertEquals(500, e.getCode());
+      assertNull(e.getCodeErreur());
+      assertEquals(
+          "HTTP 500 lors de l'appel PUT /deci/pei/751010252/pibi-caracteristiques. Reponse: "
+              + "Collection contains no element matching the predicate. Diagnostic: verifier le "
+              + "couple codeMarque/codeModele transmis au referentiel REMOcRA "
+              + "(codeMarque=PONT A MOUSSON, codeModele=BI PAM).",
+          e.getMessage());
+      return;
+    }
+
+    throw new AssertionError("Expected RequestException");
+  }
+
   private static final class ReportedError {
     private final String codeErreur;
     private final String message;

@@ -194,7 +194,7 @@ public class RequestManager {
         throwAuthenticationException();
       } else {
         response = readStream(conn.getErrorStream());
-        throw buildRequestException(method, path, codeRetour, response);
+        throw buildRequestException(method, path, codeRetour, response, jsonData);
       }
     } catch (IOException e) {
       throwConnectionException(e);
@@ -260,7 +260,7 @@ public class RequestManager {
         throwAuthenticationException();
       } else {
         response = readStream(conn.getErrorStream());
-        throw buildRequestException("GET", path, codeRetour, response);
+        throw buildRequestException("GET", path, codeRetour, response, null);
       }
     } catch (IOException e) {
       throwConnectionException(e);
@@ -429,14 +429,84 @@ public class RequestManager {
    * @return Exception métier prête à être propagée
    */
   private RequestException buildRequestException(
-      String method, String path, int statusCode, String responseBody) {
+      String method, String path, int statusCode, String responseBody, String requestBody) {
     String normalizedBody = normalizeResponseBody(responseBody);
     String errorCode = extractErrorCode(normalizedBody);
+    String message = buildHttpErrorMessage(method, path, statusCode, normalizedBody, requestBody);
+    logger.warn(message);
+    return new RequestException(statusCode, errorCode, message);
+  }
+
+  /**
+   * Construit un message d'erreur HTTP homogène et enrichi pour les cas connus côté API métier.
+   *
+   * @param method Méthode HTTP appelée
+   * @param path Chemin relatif appelé
+   * @param statusCode Code HTTP retourné
+   * @param normalizedBody Corps de réponse normalisé
+   * @param requestBody Corps de requête éventuellement transmis
+   * @return Message enrichi prêt à être journalisé
+   */
+  private String buildHttpErrorMessage(
+      String method, String path, int statusCode, String normalizedBody, String requestBody) {
     String message =
         String.format(
             "HTTP %d lors de l'appel %s %s. Reponse: %s", statusCode, method, path, normalizedBody);
-    logger.warn(message);
-    return new RequestException(statusCode, errorCode, message);
+    if (isPibiCaracteristiquesReferentialError(method, path, statusCode, normalizedBody)) {
+      return message + buildPibiCaracteristiquesDiagnostic(requestBody);
+    }
+    return message;
+  }
+
+  /**
+   * Détecte le rejet serveur observé lorsque le référentiel marque/modèle PIBI ne correspond pas.
+   *
+   * @param method Méthode HTTP
+   * @param path Chemin appelé
+   * @param statusCode Code HTTP
+   * @param normalizedBody Réponse normalisée
+   * @return {@code true} si le motif métier connu est détecté
+   */
+  private boolean isPibiCaracteristiquesReferentialError(
+      String method, String path, int statusCode, String normalizedBody) {
+    return statusCode == HttpURLConnection.HTTP_INTERNAL_ERROR
+        && "PUT".equalsIgnoreCase(method)
+        && path != null
+        && path.endsWith("/pibi-caracteristiques")
+        && "Collection contains no element matching the predicate.".equals(normalizedBody);
+  }
+
+  /**
+   * Ajoute un diagnostic ciblé sur le couple marque/modèle transmis au endpoint PIBI.
+   *
+   * @param requestBody Corps de requête JSON envoyé à l'API
+   * @return Complément de message
+   */
+  private String buildPibiCaracteristiquesDiagnostic(String requestBody) {
+    String codeMarque = extractRequestField(requestBody, "codeMarque");
+    String codeModele = extractRequestField(requestBody, "codeModele");
+    return String.format(
+        " Diagnostic: verifier le couple codeMarque/codeModele transmis au referentiel REMOcRA"
+            + " (codeMarque=%s, codeModele=%s).",
+        codeMarque != null ? codeMarque : "<null>", codeModele != null ? codeModele : "<null>");
+  }
+
+  /**
+   * Extrait une propriété textuelle simple d'un corps JSON de requête.
+   *
+   * @param requestBody Corps JSON
+   * @param fieldName Champ recherché
+   * @return Valeur textuelle ou {@code null}
+   */
+  private String extractRequestField(String requestBody, String fieldName) {
+    if (requestBody == null || requestBody.trim().isEmpty()) {
+      return null;
+    }
+    try {
+      return mapper.readTree(requestBody).path(fieldName).asText(null);
+    } catch (IOException e) {
+      return null;
+    }
   }
 
   /**
