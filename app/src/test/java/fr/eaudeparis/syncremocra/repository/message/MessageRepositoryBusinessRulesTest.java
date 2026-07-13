@@ -75,4 +75,18 @@ public class MessageRepositoryBusinessRulesTest {
         MessageRepository.shouldCreateTemporaryUnavailability(Collections.emptyList()));
     assertFalse(MessageRepository.shouldCreateTemporaryUnavailability(null));
   }
+
+  @Test
+  public void shouldKeepCase17And18MotifsOutOfTemporaryUnavailabilityFlow() {
+    assertFalse(MessageRepository.isTemporaryUnavailabilityEligibleMotif("APP CHANTIER"));
+    assertFalse(
+        MessageRepository.isTemporaryUnavailabilityEligibleMotif(
+            "INACCESSIBLE : DANS EMPRISE DE CHANTIER"));
+    assertFalse(
+        MessageRepository.shouldCreateTemporaryUnavailability(
+            Arrays.asList(
+                "APP CHANTIER",
+                "INACCESSIBLE : DANS EMPRISE DE CHANTIER",
+                "INACCESSIBLE : SOUS TERRASSE")));
+  }
 }
