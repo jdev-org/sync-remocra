@@ -66,13 +66,11 @@ public class MessageRepositoryBusinessRulesTest {
     assertTrue(
         MessageRepository.shouldCreateTemporaryUnavailability(
             Arrays.asList("ARRET EAU", "INACCESSIBLE : SOUS TERRASSE")));
-    assertFalse(
-        MessageRepository.shouldCreateTemporaryUnavailability(Arrays.asList("SANS EAU")));
+    assertFalse(MessageRepository.shouldCreateTemporaryUnavailability(Arrays.asList("SANS EAU")));
     assertFalse(
         MessageRepository.shouldCreateTemporaryUnavailability(
             Arrays.asList("APP CHANTIER", "INACCESSIBLE : DANS EMPRISE DE CHANTIER")));
-    assertFalse(
-        MessageRepository.shouldCreateTemporaryUnavailability(Collections.emptyList()));
+    assertFalse(MessageRepository.shouldCreateTemporaryUnavailability(Collections.emptyList()));
     assertFalse(MessageRepository.shouldCreateTemporaryUnavailability(null));
   }
 

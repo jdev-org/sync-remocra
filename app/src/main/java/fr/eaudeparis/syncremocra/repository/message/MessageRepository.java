@@ -31,8 +31,8 @@ import fr.eaudeparis.syncremocra.util.InternalException;
 import fr.eaudeparis.syncremocra.util.RequestException;
 import fr.eaudeparis.syncremocra.util.RequestManager;
 import java.net.HttpURLConnection;
-import java.text.SimpleDateFormat;
 import java.text.Normalizer;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -362,8 +362,7 @@ public class MessageRepository {
           indispoTemp.put("methode", "PUT");
           indispoTemp.put(
               "path",
-              apiEndpoints.indispoTemporaire(
-                  IndispoTemporaireMapper.getIndispoId(indispoActive)));
+              apiEndpoints.indispoTemporaire(IndispoTemporaireMapper.getIndispoId(indispoActive)));
           indispoTemp.set(
               "data",
               IndispoTemporaireMapper.buildUpdatePayload(
