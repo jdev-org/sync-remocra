@@ -87,4 +87,15 @@ public class MessageRepositoryBusinessRulesTest {
                 "INACCESSIBLE : DANS EMPRISE DE CHANTIER",
                 "INACCESSIBLE : SOUS TERRASSE")));
   }
+
+  @Test
+  public void shouldCreateClosureVisitOnlyForTrackedMotifsOtherThanArretEauAlone() {
+    assertTrue(MessageRepository.shouldCreateIndispoClosureVisit(Arrays.asList("APP CHANTIER")));
+    assertTrue(
+        MessageRepository.shouldCreateIndispoClosureVisit(
+            Arrays.asList("APP CHANTIER", "ARRET EAU")));
+    assertFalse(MessageRepository.shouldCreateIndispoClosureVisit(Arrays.asList("ARRET EAU")));
+    assertFalse(MessageRepository.shouldCreateIndispoClosureVisit(Collections.emptyList()));
+    assertFalse(MessageRepository.shouldCreateIndispoClosureVisit(null));
+  }
 }
