@@ -343,6 +343,7 @@ public class MessageRepository {
     ArrayList<Map<String, Object>> dataIndispoEnCours = mapper.readValue(indispoEnCours, typeRef);
     Map<String, Object> indispoActive =
         IndispoTemporaireMapper.findActiveIndispo(dataIndispoEnCours, reference);
+    List<String> trackedIndispoMotifs = getTrackedIndispoMotifs(reference);
 
     // Si Indisponible, on créé une indispo temporaire s'il n'en existe pas déjà une
     // sur ce PEI
@@ -409,11 +410,12 @@ public class MessageRepository {
             traca
                 .getEtat())) { // Si disponible, on met fin à l'indispo temporaire active sur ce pei
       if (indispoActive == null) {
-        logger.info(
-            "PEI "
-                + reference
-                + " disponible - Aucune indispo temporaire EDP active, fin du traitement du"
-                + " message");
+        logger.info("PEI " + reference + " disponible - Aucune indispo temporaire EDP active");
+        if (!trackedIndispoMotifs.isEmpty()) {
+          logger.info(
+              "PEI " + reference + " disponible - remontée de la levée des motifs EDP mémorisés");
+          this.remonteeMotifsIndispo(message, reference);
+        }
         context
             .update(MESSAGE)
             .set(MESSAGE.STATUT, "TRAITE")
@@ -430,7 +432,9 @@ public class MessageRepository {
             "data",
             IndispoTemporaireMapper.buildUpdatePayload(
                 mapper, reference, indispoActive, traca.getDateMajE()));
-        this.remonteeMotifsIndispo(message, reference);
+        if (!trackedIndispoMotifs.isEmpty()) {
+          this.remonteeMotifsIndispo(message, reference);
+        }
         return indispoTemp;
       }
     }
@@ -442,6 +446,20 @@ public class MessageRepository {
         .select(DSL.upper(TRACABILITE_INDISPO.MOTIF_INDISPO))
         .from(TRACABILITE_INDISPO)
         .where(TRACABILITE_INDISPO.ID_TRACA_PEI.eq(traca.getId().longValue()))
+        .fetchInto(String.class);
+  }
+
+  /**
+   * Récupère les motifs EDP qui ont été précédemment remontés à REMOcRA pour un PEI.
+   *
+   * @param reference référence du PEI
+   * @return motifs d'indisponibilité mémorisés localement
+   */
+  private List<String> getTrackedIndispoMotifs(String reference) {
+    return context
+        .select(MOTIF_INDISPO_ACTIF.MOTIF)
+        .from(MOTIF_INDISPO_ACTIF)
+        .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(reference))
         .fetchInto(String.class);
   }
 
@@ -499,24 +517,20 @@ public class MessageRepository {
                 .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(traca.getReference()))
                 .fetchInto(String.class);
 
-        // "ARRET EAU" est une anomalie qui ne donne pas lieu à une visite dans REMOcRA
-        // si elle est
-        // la seule anomalie
-        if (motifIndispo.size() == 1 && motifIndispo.contains("ARRET EAU")) {
-          logger.info(
-              "Mise en disponible avec pour seul motif actif ARRET EAU : pas de création de"
-                  + " visite");
-          context
-              .deleteFrom(MOTIF_INDISPO_ACTIF)
-              .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(traca.getReference()))
-              .execute();
+        if (!shouldCreateIndispoClosureVisit(motifIndispo)) {
+          if (motifIndispo.size() == 1 && "ARRET EAU".equalsIgnoreCase(motifIndispo.get(0))) {
+            logger.info(
+                "Mise en disponible avec pour seul motif actif ARRET EAU : pas de création de"
+                    + " visite");
+            context
+                .deleteFrom(MOTIF_INDISPO_ACTIF)
+                .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(traca.getReference()))
+                .execute();
+          }
           return null;
-        }
-
-        // les indisposActive ne concerne pas qu'arret eau
-        else {
+        } else {
           logger.info(
-              "Mise en disponible avec D'AUTRE motif actif que ARRET EAU : : Création de visite");
+              "Mise en disponible avec des motifs EDP actifs : création de visite de levée");
           /**
            * On remplit le tableau anomaliesAControler à pour confirmer dans la visite que les
            * anomalies ont été controllées mais pas constantées
@@ -999,6 +1013,20 @@ public class MessageRepository {
       }
     }
     return false;
+  }
+
+  /**
+   * Détermine si une remise en disponibilité doit créer une visite de levée des motifs EDP.
+   *
+   * @param trackedIndispoMotifs motifs précédemment remontés à REMOcRA
+   * @return {@code true} si une visite NP de levée doit être créée
+   */
+  static boolean shouldCreateIndispoClosureVisit(List<String> trackedIndispoMotifs) {
+    if (trackedIndispoMotifs == null || trackedIndispoMotifs.isEmpty()) {
+      return false;
+    }
+    return trackedIndispoMotifs.size() != 1
+        || !"ARRET EAU".equalsIgnoreCase(trackedIndispoMotifs.get(0));
   }
 
   /**
