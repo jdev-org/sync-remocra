@@ -6,4 +6,7 @@
 |Version |Date |Modifications
 |0.1 |09/03/2021 |Version initiale
 |0.2 |23/03/2021 |Installation Ubuntu 20.04, mise à jour, exploitation
+|0.3 |05/06/2026 |Adaptation technique à REMOcRA V3 : authentification Keycloak et gestion des versions des images Docker
+|0.4 |01/09/2026 |Mise à jour des manuels REMOcRA V3 et ajout de la documentation de conception des règles métiers et du push-worker
+|0.5 |04/09/2026 |Ajout des correspondances d'indisponibilité `FERME DEMANDE SSQ` et `APP PROJET` vers `BSPP_APSE`
 |=======================================================================

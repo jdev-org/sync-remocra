@@ -117,6 +117,11 @@ Vérifier en particulier la configuration d'accès à l'API REMOcRA :
 - `API_KEYCLOAK_URL`, `API_KEYCLOAK_REALM`, `API_KEYCLOAK_CLIENT_ID` et
   `API_KEYCLOAK_CLIENT_SECRET`
 
+Pour une installation REMOcRA V3, la même image applicative et le même fichier `common.env` doivent
+être utilisés par les scripts `run-changedatacapture.sh`, `run-pushworker.sh` et par le script qui
+exécute la commande applicative `notification`. Le job de notification initialise le client API
+REMOcRA ; il doit donc recevoir les variables `API_*` et ne doit pas rester sur une image antérieure.
+
 
 Reconfiguration de l'accès à Oracle depuis PostgreSQL (remplacer le XXXXXXXXXX par la bonne valeur)
 [source,sh]

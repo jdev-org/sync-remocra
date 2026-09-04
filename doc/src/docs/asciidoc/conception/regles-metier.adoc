@@ -1,0 +1,82 @@
+= Règles métiers - Vue d'ensemble
+Eau de Paris - Synchronisation Remocra
+v${project.version}, ${timestamp}
+
+:toc:
+
+* link:../index.html[Accueil]
+
+== Objectif
+
+Sync-remocra synchronise les informations des points d'eau incendie (PEI) entre le système Eau de
+Paris et REMOCRA. Il ne définit pas les règles métier REMOCRA : il transporte et transforme les
+données selon le contrat d'API et les référentiels disponibles.
+
+== Rôles des systèmes
+
+|===
+|Système |Rôle
+
+|WatGIS / SmartMobility
+|Saisie et gestion des PEI, visites, mesures, états et indisponibilités par Eau de Paris.
+
+|Vues Oracle EDP
+|Préparent les données à synchroniser : état, dernière visite, dates de modification, mesures et
+motifs d'indisponibilité actifs.
+
+|Sync-remocra
+|Détecte les changements, conserve une traçabilité, construit les payloads de l'API et appelle
+REMOCRA.
+
+|REMOCRA
+|Enregistre les PEI, visites et indisponibilités temporaires ; applique son référentiel d'anomalies
+et ses règles de disponibilité.
+|===
+
+== Circulation des informations
+
+[source,text]
+----
+WatGIS / SmartMobility
+        |
+        v
+Vues Oracle EDP
+        |
+        v
+changedatacapture
+        |
+        v
+Tables de traçabilité et messages Sync-remocra
+        |
+        v
+pushworker
+        |
+        v
+API REMOCRA V3
+        |
+        v
+REMOCRA
+----
+
+== Fonctionnement simplifié
+
+. Une information est créée ou modifiée dans WatGIS / SmartMobility : visite, mesure,
+  caractéristique du PEI, état disponible/indisponible ou motif d'indisponibilité.
+. Les vues Oracle mettent cette information à disposition de Sync-remocra avec des dates de mise à
+  jour.
+. Le job `changedatacapture` détecte les dates modifiées et crée un message local à traiter.
+. Le job `pushworker` lit le message, récupère la traçabilité associée et envoie les données à
+  REMOCRA par l'API V3.
+. REMOCRA interprète le payload reçu selon ses propres référentiels et règles métier.
+. En cas d'erreur, Sync-remocra conserve l'erreur avec le message ; le job `notification` adresse
+  les notifications configurées.
+
+== Limites de responsabilité
+
+* Les vues Oracle déterminent les données sources exposées à Sync-remocra.
+* Sync-remocra applique les transformations techniques et les correspondances présentes dans ses
+  référentiels locaux.
+* REMOCRA détermine notamment les anomalies accessibles, le caractère bloquant d'un point
+  d'attention et l'état final du PEI.
+* Les règles métier attendues doivent être documentées dans un référentiel fonctionnel partagé ;
+  elles ne doivent pas être déduites uniquement des résultats affichés dans REMOCRA.
