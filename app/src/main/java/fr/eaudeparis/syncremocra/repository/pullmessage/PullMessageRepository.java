@@ -9,6 +9,7 @@ import static fr.eaudeparis.syncremocra.db.model.tables.TypeErreur.TYPE_ERREUR;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.PullHydrant;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TypeErreur;
 import fr.eaudeparis.syncremocra.repository.erreur.ErreurRepository;
@@ -47,6 +48,8 @@ public class PullMessageRepository {
 
   @Inject RequestManager requestManager;
 
+  @Inject ApiEndpoints apiEndpoints;
+
   @Inject ErreurRepository erreurRepository;
 
   /** Récupération des informations depuis Remocra */
@@ -57,8 +60,8 @@ public class PullMessageRepository {
 
       logger.info("Récupération des modifications depuis " + date);
       Map<String, String> params = new HashMap<String, String>();
-      params.put("date", date);
-      String json = this.requestManager.sendGetRequest("/api/deci/pei/diff", params);
+      params.put("moment", date);
+      String json = this.requestManager.sendGetRequest(apiEndpoints.peiDiff(), params);
 
       ObjectMapper objectMapper = new ObjectMapper();
       DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -86,8 +89,10 @@ public class PullMessageRepository {
                   || pei.getDateModification().compareTo(modifVisites.getDateModification()) > 0)) {
             modifVisites = pei;
           } else if ("CARACTERISTIQUES".equals(pei.getType())
-              && (modifVisites == null
-                  || pei.getDateModification().compareTo(modifVisites.getDateModification()) > 0)) {
+              && (modifCaracteristiques == null
+                  || pei.getDateModification()
+                          .compareTo(modifCaracteristiques.getDateModification())
+                      > 0)) {
             modifCaracteristiques = pei;
           }
         }
@@ -177,11 +182,7 @@ public class PullMessageRepository {
 
     // Si les données n'ont pas été modifiées par l'organisme courant (ou un de ses utilisateurs, on
     // remonte l'info
-    if ((("ETL".equals(modif.getAuteurModificationFlag())
-                || "USER".equals(modif.getAuteurModificationFlag()))
-            && !modif.getUtilisateurModificationOrganisme().equals(nomOrganisme))
-        || ("API".equals(modif.getAuteurModificationFlag())
-            && !modif.getOrganismeModification().equals(nomOrganisme))) {
+    if (!modif.isModifiedByCurrentOrganisme(nomOrganisme)) {
 
       this.recuperationVisites(modif.getNumero());
 
@@ -227,15 +228,15 @@ public class PullMessageRepository {
               .where(PULL_HYDRANT.NUMERO.equalIgnoreCase(modif.getNumero()))
               .fetchOneInto(Long.class);
 
-      String jsonPei = this.requestManager.sendGetRequest("/api/deci/pei/" + modif.getNumero());
+      String jsonPei = this.requestManager.sendGetRequest(apiEndpoints.pei(modif.getNumero()));
       String jsonPeiCarac =
-          this.requestManager.sendGetRequest(
-              "/api/deci/pei/" + modif.getNumero() + "/caracteristiques");
+          this.requestManager.sendGetRequest(apiEndpoints.peiCaracteristiques(modif.getNumero()));
 
       ObjectMapper mapper = new ObjectMapper();
       TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
       Map<String, Object> dataPei = mapper.readValue(jsonPei, typeRef);
       Map<String, Object> dataPeiCarac = mapper.readValue(jsonPeiCarac, typeRef);
+      PullHydrant hydrant = PullHydrantMapper.map(dataPei, dataPeiCarac);
 
       String auteurModification =
           ("USER".equals(modif.getAuteurModificationFlag()))
@@ -259,31 +260,25 @@ public class PullMessageRepository {
                         .atZone(ZoneId.systemDefault())
                         .toLocalDateTime())
                 .set(PULL_HYDRANT.AUTEUR_MODIFICATION, auteurModification)
-                .set(PULL_HYDRANT.DIAMETRE, JSONUtil.getString(dataPeiCarac, "diametre"))
-                .set(PULL_HYDRANT.MARQUE, JSONUtil.getString(dataPeiCarac, "marque"))
-                .set(PULL_HYDRANT.MODELE, JSONUtil.getString(dataPeiCarac, "modele"))
-                .set(
-                    PULL_HYDRANT.DIAMETRE_CANALISATION,
-                    JSONUtil.getInteger(dataPeiCarac, "diametreCanalisation"))
-                .set(
-                    PULL_HYDRANT.ANNEE_FABRICATION,
-                    JSONUtil.getString(dataPeiCarac, "anneeFabrication"))
-                .set(PULL_HYDRANT.COMPLEMENT, JSONUtil.getString(dataPei, "complement"))
-                .set(PULL_HYDRANT.DISPO_TERRESTRE, JSONUtil.getString(dataPei, "dispoTerrestre"))
-                .set(PULL_HYDRANT.DISPO_HBE, JSONUtil.getString(dataPei, "dispoAerienne"))
-                .set(PULL_HYDRANT.NUMERO_VOIE, JSONUtil.getInteger(dataPei, "numeroVoie"))
-                .set(PULL_HYDRANT.SUFFIXE_VOIE, JSONUtil.getString(dataPei, "suffixeVoie"))
-                .set(PULL_HYDRANT.NIVEAU, JSONUtil.getString(dataPei, "niveau"))
-                .set(PULL_HYDRANT.VOIE, JSONUtil.getString(dataPei, "voie"))
-                .set(PULL_HYDRANT.VOIE2, JSONUtil.getString(dataPei, "carrefour"))
-                .set(PULL_HYDRANT.EN_FACE, JSONUtil.getBoolean(dataPei, "enFace"))
-                .set(PULL_HYDRANT.DOMAINE, JSONUtil.getString(dataPei, "domaine"))
-                .set(PULL_HYDRANT.COMMUNE, JSONUtil.getString(dataPei, "commune"))
-                .set(PULL_HYDRANT.NATURE, JSONUtil.getString(dataPei, "nature"))
-                .set(PULL_HYDRANT.NATURE_DECI, JSONUtil.getString(dataPei, "natureDeci"))
-                .set(
-                    PULL_HYDRANT.INDISPO_TEMPORAIRE,
-                    JSONUtil.getBoolean(dataPei, "indispoTemporaire"))
+                .set(PULL_HYDRANT.DIAMETRE, hydrant.getDiametre())
+                .set(PULL_HYDRANT.MARQUE, hydrant.getMarque())
+                .set(PULL_HYDRANT.MODELE, hydrant.getModele())
+                .set(PULL_HYDRANT.DIAMETRE_CANALISATION, hydrant.getDiametreCanalisation())
+                .set(PULL_HYDRANT.ANNEE_FABRICATION, hydrant.getAnneeFabrication())
+                .set(PULL_HYDRANT.COMPLEMENT, hydrant.getComplement())
+                .set(PULL_HYDRANT.DISPO_TERRESTRE, hydrant.getDispoTerrestre())
+                .set(PULL_HYDRANT.DISPO_HBE, hydrant.getDispoHbe())
+                .set(PULL_HYDRANT.NUMERO_VOIE, hydrant.getNumeroVoie())
+                .set(PULL_HYDRANT.SUFFIXE_VOIE, hydrant.getSuffixeVoie())
+                .set(PULL_HYDRANT.NIVEAU, hydrant.getNiveau())
+                .set(PULL_HYDRANT.VOIE, hydrant.getVoie())
+                .set(PULL_HYDRANT.VOIE2, hydrant.getVoie2())
+                .set(PULL_HYDRANT.EN_FACE, hydrant.getEnFace())
+                .set(PULL_HYDRANT.DOMAINE, hydrant.getDomaine())
+                .set(PULL_HYDRANT.COMMUNE, hydrant.getCommune())
+                .set(PULL_HYDRANT.NATURE, hydrant.getNature())
+                .set(PULL_HYDRANT.NATURE_DECI, hydrant.getNatureDeci())
+                .set(PULL_HYDRANT.INDISPO_TEMPORAIRE, hydrant.getIndispoTemporaire())
                 .returning(PULL_HYDRANT.ID)
                 .fetchOne()
                 .getValue(PULL_HYDRANT.ID);
@@ -302,29 +297,25 @@ public class PullMessageRepository {
                     .atZone(ZoneId.systemDefault())
                     .toLocalDateTime())
             .set(PULL_HYDRANT.AUTEUR_MODIFICATION, auteurModification)
-            .set(PULL_HYDRANT.DIAMETRE, JSONUtil.getString(dataPeiCarac, "diametre"))
-            .set(PULL_HYDRANT.MARQUE, JSONUtil.getString(dataPeiCarac, "marque"))
-            .set(PULL_HYDRANT.MODELE, JSONUtil.getString(dataPeiCarac, "modele"))
-            .set(
-                PULL_HYDRANT.DIAMETRE_CANALISATION,
-                JSONUtil.getInteger(dataPeiCarac, "diametreCanalisation"))
-            .set(
-                PULL_HYDRANT.ANNEE_FABRICATION,
-                JSONUtil.getString(dataPeiCarac, "anneeFabrication"))
-            .set(PULL_HYDRANT.COMPLEMENT, JSONUtil.getString(dataPei, "complement"))
-            .set(PULL_HYDRANT.DISPO_TERRESTRE, JSONUtil.getString(dataPei, "dispoTerrestre"))
-            .set(PULL_HYDRANT.DISPO_HBE, JSONUtil.getString(dataPei, "dispoAerienne"))
-            .set(PULL_HYDRANT.NUMERO_VOIE, JSONUtil.getInteger(dataPei, "numeroVoie"))
-            .set(PULL_HYDRANT.SUFFIXE_VOIE, JSONUtil.getString(dataPei, "suffixeVoie"))
-            .set(PULL_HYDRANT.NIVEAU, JSONUtil.getString(dataPei, "niveau"))
-            .set(PULL_HYDRANT.VOIE, JSONUtil.getString(dataPei, "voie"))
-            .set(PULL_HYDRANT.VOIE2, JSONUtil.getString(dataPei, "carrefour"))
-            .set(PULL_HYDRANT.EN_FACE, JSONUtil.getBoolean(dataPei, "enFace"))
-            .set(PULL_HYDRANT.DOMAINE, JSONUtil.getString(dataPei, "domaine"))
-            .set(PULL_HYDRANT.COMMUNE, JSONUtil.getString(dataPei, "commune"))
-            .set(PULL_HYDRANT.NATURE, JSONUtil.getString(dataPei, "nature"))
-            .set(PULL_HYDRANT.NATURE_DECI, JSONUtil.getString(dataPei, "natureDeci"))
-            .set(PULL_HYDRANT.INDISPO_TEMPORAIRE, JSONUtil.getBoolean(dataPei, "indispoTemporaire"))
+            .set(PULL_HYDRANT.DIAMETRE, hydrant.getDiametre())
+            .set(PULL_HYDRANT.MARQUE, hydrant.getMarque())
+            .set(PULL_HYDRANT.MODELE, hydrant.getModele())
+            .set(PULL_HYDRANT.DIAMETRE_CANALISATION, hydrant.getDiametreCanalisation())
+            .set(PULL_HYDRANT.ANNEE_FABRICATION, hydrant.getAnneeFabrication())
+            .set(PULL_HYDRANT.COMPLEMENT, hydrant.getComplement())
+            .set(PULL_HYDRANT.DISPO_TERRESTRE, hydrant.getDispoTerrestre())
+            .set(PULL_HYDRANT.DISPO_HBE, hydrant.getDispoHbe())
+            .set(PULL_HYDRANT.NUMERO_VOIE, hydrant.getNumeroVoie())
+            .set(PULL_HYDRANT.SUFFIXE_VOIE, hydrant.getSuffixeVoie())
+            .set(PULL_HYDRANT.NIVEAU, hydrant.getNiveau())
+            .set(PULL_HYDRANT.VOIE, hydrant.getVoie())
+            .set(PULL_HYDRANT.VOIE2, hydrant.getVoie2())
+            .set(PULL_HYDRANT.EN_FACE, hydrant.getEnFace())
+            .set(PULL_HYDRANT.DOMAINE, hydrant.getDomaine())
+            .set(PULL_HYDRANT.COMMUNE, hydrant.getCommune())
+            .set(PULL_HYDRANT.NATURE, hydrant.getNature())
+            .set(PULL_HYDRANT.NATURE_DECI, hydrant.getNatureDeci())
+            .set(PULL_HYDRANT.INDISPO_TEMPORAIRE, hydrant.getIndispoTemporaire())
             .where(PULL_HYDRANT.ID.eq(Math.toIntExact(id)))
             .execute();
       }
@@ -358,7 +349,7 @@ public class PullMessageRepository {
         .where(PULL_HYDRANT_VISITE.HYDRANT.eq(Long.valueOf(pei.getId())))
         .execute();
 
-    String jsonVisites = this.requestManager.sendGetRequest("/api/deci/pei/" + numero + "/visites");
+    String jsonVisites = this.requestManager.sendGetRequest(apiEndpoints.peiVisites(numero));
 
     ObjectMapper mapper = new ObjectMapper();
     TypeReference<List<Map<String, Object>>> typeRef =
@@ -375,7 +366,7 @@ public class PullMessageRepository {
     for (Map<String, Object> visite : dataVisites) {
       String jsonVisiteSpecifique =
           this.requestManager.sendGetRequest(
-              "/api/deci/pei/" + pei.getNumero() + "/visites/" + visite.get("identifiant"));
+              apiEndpoints.peiVisite(pei.getNumero(), PullHydrantVisiteMapper.getVisiteId(visite)));
       Map<String, Object> dataVisiteSpecifique =
           mapper.readValue(jsonVisiteSpecifique, typeRefKeyValue);
 
@@ -386,8 +377,10 @@ public class PullMessageRepository {
               .set(PULL_HYDRANT_VISITE.HYDRANT, Long.valueOf(pei.getId()))
               .set(
                   PULL_HYDRANT_VISITE.DATE,
-                  JSONUtil.getLocalDateTime(dataVisiteSpecifique, "date", "yyyy-MM-dd HH:mm"))
-              .set(PULL_HYDRANT_VISITE.TYPE, JSONUtil.getString(dataVisiteSpecifique, "contexte"))
+                  PullHydrantVisiteMapper.getVisitDate(dataVisiteSpecifique))
+              .set(
+                  PULL_HYDRANT_VISITE.TYPE,
+                  PullHydrantVisiteMapper.getLocalVisitType(dataVisiteSpecifique))
               .set(
                   PULL_HYDRANT_VISITE.CTRL_DEBIT_PRESSION,
                   JSONUtil.getBoolean(dataVisiteSpecifique, "ctrlDebitPression"))
@@ -402,10 +395,12 @@ public class PullMessageRepository {
                   JSONUtil.getDouble(dataVisiteSpecifique, "pression"))
               .set(
                   PULL_HYDRANT_VISITE.PRESSION_DYN,
-                  JSONUtil.getDouble(dataVisiteSpecifique, "pressionDyn"))
+                  PullHydrantVisiteMapper.getDouble(
+                      dataVisiteSpecifique, "pressionDyn", "pressionDynamique"))
               .set(
                   PULL_HYDRANT_VISITE.PRESSION_DYN_DEB,
-                  JSONUtil.getDouble(dataVisiteSpecifique, "pressionDynDeb"))
+                  PullHydrantVisiteMapper.getDouble(
+                      dataVisiteSpecifique, "pressionDynDeb", "pressionDynamiqueDebitMax"))
               .set(
                   PULL_HYDRANT_VISITE.OBSERVATIONS,
                   JSONUtil.getString(dataVisiteSpecifique, "observations"))

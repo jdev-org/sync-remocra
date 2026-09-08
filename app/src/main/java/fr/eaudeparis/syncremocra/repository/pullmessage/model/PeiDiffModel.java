@@ -1,24 +1,40 @@
 package fr.eaudeparis.syncremocra.repository.pullmessage.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Date;
 
+/**
+ * Modèle local des modifications PEI.
+ *
+ * <p>Cette classe conserve des accesseurs stables pour le reste du code tout en désérialisant le
+ * contrat REMOcRA v3.
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PeiDiffModel {
 
-  String numero;
+  @JsonProperty("numeroComplet")
+  private String numero;
 
-  Date dateModification;
+  @JsonProperty("momentModification")
+  private Date dateModification;
 
-  String utilisateurModification;
+  private String utilisateurModification;
 
-  String utilisateurModificationOrganisme;
+  private String utilisateurModificationOrganisme;
 
-  String organismeModification;
+  @JsonProperty("auteurModification")
+  private String organismeModification;
 
-  String auteurModificationFlag;
+  private String auteurModificationFlag;
 
-  String operation;
+  @JsonProperty("typeOperation")
+  private String operation;
 
-  String type;
+  @JsonProperty("typeObjet")
+  private String type;
+
+  private Auteur auteur;
 
   public String getNumero() {
     return numero;
@@ -37,7 +53,7 @@ public class PeiDiffModel {
   }
 
   public String getUtilisateurModification() {
-    return utilisateurModification;
+    return utilisateurModification != null ? utilisateurModification : organismeModification;
   }
 
   public void setUtilisateurModification(String utilisateurModification) {
@@ -61,7 +77,16 @@ public class PeiDiffModel {
   }
 
   public String getAuteurModificationFlag() {
-    return auteurModificationFlag;
+    if (auteurModificationFlag != null) {
+      return auteurModificationFlag;
+    }
+    if (auteur == null || auteur.typeSourceModification == null) {
+      return null;
+    }
+    if ("API".equalsIgnoreCase(auteur.typeSourceModification)) {
+      return "API";
+    }
+    return "USER";
   }
 
   public void setAuteurModificationFlag(String auteurModificationFlag) {
@@ -77,10 +102,61 @@ public class PeiDiffModel {
   }
 
   public String getType() {
+    if ("PEI".equalsIgnoreCase(type)) {
+      return "CARACTERISTIQUES";
+    }
+    if ("VISITE".equalsIgnoreCase(type)) {
+      return "VISITES";
+    }
     return type;
   }
 
   public void setType(String type) {
     this.type = type;
+  }
+
+  public Auteur getAuteur() {
+    return auteur;
+  }
+
+  public void setAuteur(Auteur auteur) {
+    this.auteur = auteur;
+  }
+
+  /**
+   * Indique si la modification provient de l'organisme courant et doit donc être ignorée côté pull.
+   *
+   * <p>Avec le contrat v3, l'organisme d'un auteur web/mobile n'est plus disponible dans le diff.
+   * Dans ce cas, on reste conservateur et on considère la modification comme externe.
+   *
+   * @param nomOrganisme Organisme courant côté sync
+   * @return {@code true} si la modification doit être considérée comme locale
+   */
+  public boolean isModifiedByCurrentOrganisme(String nomOrganisme) {
+    String auteurFlag = getAuteurModificationFlag();
+    if (auteurFlag == null || nomOrganisme == null) {
+      return false;
+    }
+    if ("API".equals(auteurFlag)) {
+      return nomOrganisme.equals(getOrganismeModification());
+    }
+    if ("USER".equals(auteurFlag) || "ETL".equals(auteurFlag)) {
+      return nomOrganisme.equals(getUtilisateurModificationOrganisme());
+    }
+    return false;
+  }
+
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public static class Auteur {
+    @JsonProperty("typeSourceModification")
+    private String typeSourceModification;
+
+    public String getTypeSourceModification() {
+      return typeSourceModification;
+    }
+
+    public void setTypeSourceModification(String typeSourceModification) {
+      this.typeSourceModification = typeSourceModification;
+    }
   }
 }

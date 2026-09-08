@@ -1,0 +1,142 @@
+= Conception - Traitement des messages du push-worker
+Eau de Paris - Synchronisation Remocra
+v${project.version}, ${timestamp}
+
+:toc:
+:toclevels: 3
+
+* link:../../index.html[Accueil]
+* link:../regles-metier.html[Conception - vue d'ensemble]
+* link:../visites-v3.html[Conception - traitement des visites REMOcRA V3]
+* link:caracteristiques-v3.html[Conception - caractéristiques REMOcRA V3]
+
+== Objet et périmètre
+
+Ce document décrit le cycle de traitement actuellement implémenté dans le push-worker : sélection
+des messages, envoi API, statuts, reprises et contrôle différé des indisponibilités temporaires.
+
+== Messages sélectionnés
+
+Au démarrage, le push-worker sélectionne les messages `edp.message` :
+
+* au statut `A TRAITER` ;
+* ou au statut `EN ERREUR` avec `synchroniser = true`.
+
+Ils sont traités par ordre croissant de date. Le paramètre
+`FLAG_STATUS_PUSHWORKER` est positionné à `EN COURS` pendant le traitement, puis à `TERMINE` à la
+fin du job.
+
+== Routage par type de message
+
+|===
+|Type |Traitement |Service REMOcRA
+
+|`SPECIFIQUE`
+|Visite issue d'une donnée de visite de la vue.
+|`POST /deci/pei/{reference}/visites`
+
+|`MANUELLE`
+|Visite manuelle, notamment utilisée pour les essais.
+|`POST /deci/pei/{reference}/visites`
+
+|`INDISPO_TEMPORAIRE`
+|Création, mise à jour ou levée d'indisponibilité temporaire selon le motif et l'état du PEI.
+|Service d'indisponibilité temporaire ou visite NP selon le cas.
+
+|`CARACTERISTIQUES`
+|Mise à jour des caractéristiques selon la nature PIBI ou PENA du PEI dans REMOcRA.
+|`PUT /deci/pei/{reference}/pibi-caracteristiques` ou `pena-caracteristiques`
+|===
+
+Les types de visites, les payloads et les règles de motifs sont détaillés dans
+link:../visites-v3.html[le document de conception des visites]. Les caractéristiques sont détaillées
+dans link:caracteristiques-v3.html[le document de conception des caractéristiques].
+
+== Enregistrement du payload
+
+Avant l'appel HTTP, le payload est enregistré dans `edp.message.json`.
+
+Pour les messages `SPECIFIQUE` et `MANUELLE`, la copie locale contient également le champ
+historique `contexte` (`NP` ou `CTRL`). Ce champ n'est pas transmis à l'API REMOcRA V3 : la requête
+HTTP contient le payload de visite sans `contexte`.
+
+== Succès de l'appel API
+
+Une réponse HTTP `200` ou `201` marque le message comme traité :
+
+* `statut = TRAITE` pour les visites et caractéristiques ordinaires ;
+* incrément de `synchronisations` ;
+* `synchroniser = false`.
+
+Pour une action d'indisponibilité temporaire correctement envoyée, le statut est `A VERIFIER` au
+lieu de `TRAITE`. Le push-worker renseigne alors `date_debut_verif` à environ cinq minutes et
+trente secondes après l'envoi afin de laisser à REMOcRA le temps d'appliquer le traitement.
+
+== Vérification différée des indisponibilités temporaires
+
+Le job `notification` traite ensuite les messages `A VERIFIER` dont `date_debut_verif` est échue.
+Il appelle `GET /deci/pei/{reference}` et compare :
+
+|===
+|Donnée locale |Valeur REMOcRA attendue
+
+|`edp.tracabilite_pei.etat = Disponible`
+|`dispoTerrestre = DISPO`
+
+|`edp.tracabilite_pei.etat = Indisponible`
+|`dispoTerrestre = INDISPO`
+|===
+
+Dans les deux cas, le message est ensuite positionné à `TRAITE`. En cas d'écart, le job de
+notification envoie le courriel d'incohérence avant de clôturer le message. Ce contrôle est donc
+réalisé par le job `notification`, et non directement par le push-worker.
+
+== Erreurs et reprises
+
+=== Erreur de construction, référentiel ou réponse API
+
+Pour une erreur applicative ou une réponse API en erreur, le message passe à `EN ERREUR` et son
+compteur `synchronisations` est incrémenté. Le paramètre `synchroniser` est maintenu à `true` tant
+que le nombre maximal de tentatives défini dans `edp.type_erreur` n'est pas atteint.
+
+Lorsque ce seuil est atteint, `synchroniser` est positionné à `false` et une erreur est créée pour
+le job de notification. Le message n'est alors plus repris automatiquement.
+
+=== Erreur de connexion ou d'authentification
+
+Une erreur de connexion à l'API ou d'authentification arrête le traitement de la liste courante.
+Le message courant et les messages restants sont marqués en erreur selon leur règle de reprise.
+Les codes d'erreur utilisés pour la notification sont `0003` pour la connexion et `0200` pour
+l'authentification ; après épuisement des tentatives, une erreur `I1003` est créée.
+
+== Interruption du push-worker
+
+Au démarrage, si `FLAG_STATUS_PUSHWORKER` vaut encore `EN COURS`, le job considère qu'une exécution
+précédente s'est interrompue. Il bascule alors les messages qui étaient en cours de traitement vers
+le cycle d'erreur et de reprise, plutôt que de lancer un second traitement concurrent.
+
+== Diagnostic minimal
+
+Pour identifier le comportement d'un PEI, consulter ses messages et leur payload :
+
+[source,sql]
+----
+select
+  m.id,
+  m.type,
+  m.statut,
+  m.date,
+  m.synchronisations,
+  m.synchroniser,
+  m.erreur,
+  m.json,
+  m.json_creation_visite
+from edp.message m
+join edp.tracabilite_pei t on t.id = m.id_traca_pei
+where t.reference = '<reference_pei>'
+order by m.date, m.id;
+----
+
+Un message absent signifie que le changedatacapture n'a pas créé de demande à transmettre. Un
+message `TRAITE` confirme la réussite HTTP du push-worker, mais ne permet pas à lui seul de
+confirmer l'application des règles métier internes à REMOcRA.

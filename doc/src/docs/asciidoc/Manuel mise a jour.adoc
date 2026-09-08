@@ -25,7 +25,7 @@ On met à jour la version dans la configuration :
 [source,sh]
 ----
 # Exemple de version
-export EDP_VERSION=1.0
+export EDP_VERSION=1.43
 
 # Nouvelle version dans le fichier de configuration
 sed -i "s/EDP_VERSION.*=.*/EDP_VERSION=${EDP_VERSION}/g" /var/syncremocra/common.env
@@ -44,6 +44,38 @@ export APP_IMAGE_FULL=${APP_EDP_REGISTRY_PREFIX}edp/syncremocra-pdi:${APP_VERSIO
 docker pull ${APP_IMAGE_FULL}
 
 docker image prune -f
+----
+
+Bonnes pratiques de versionnement Docker :
+
+* utiliser un tag immuable pour `EDP_VERSION` ;
+* pour une release Git `v1.43`, utiliser `EDP_VERSION=1.43` ;
+* pour un build de la branche `main`, utiliser un tag de type `main-<sha-court>` ;
+* éviter d'utiliser `latest` en production, car cet alias peut changer sans modification de configuration locale.
+
+=== Vérifications spécifiques à REMOcRA V3
+
+La mise à jour V3 ne doit pas être limitée au seul script du push-worker. Vérifier que tous les
+scripts exécutant l'application utilisent la même image et le même tag, en particulier :
+
+* `run-changedatacapture.sh` ;
+* `run-pushworker.sh` ;
+* le script exécutant la commande applicative `notification`, s'il est utilisé.
+
+Ces conteneurs doivent tous charger `/var/syncremocra/common.env`, qui contient la configuration
+OAuth2/Keycloak de REMOcRA V3. Mettre à jour uniquement le push-worker peut laisser le job de
+notification sur une image ou une configuration ancienne et provoquer des notifications
+d'authentification erronées.
+
+Après mise à jour, exécuter une fois chaque job et vérifier son journal avant de réactiver les
+tâches planifiées :
+
+[source,sh]
+----
+/var/syncremocra/run-changedatacapture.sh
+/var/syncremocra/run-pushworker.sh
+# Si ce script existe dans l'installation :
+/var/syncremocra/run-notification.sh
 ----
 
 Lorsqu'aucun registre n'est utilisé, on charge les nouvelles images, en ayant déposé le fichier tar au préalable :

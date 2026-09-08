@@ -15,6 +15,7 @@ services:
            POSTGRES_DB: edp
            POSTGRES_PASSWORD: postgres
            TZ: "Europe/Paris"
+         network_mode: host
 
        oracle:
          container_name: dev-edp-db-oracle
@@ -24,6 +25,6 @@ services:
            - "1521:1521"
          volumes:
            - .docker/oracle:/var/lib/oracle
-
+         network_mode: host
 
 

@@ -31,7 +31,7 @@ A réaliser après la migration.  Exemple de reprise de la configuration du FDW 
  ```sh
 docker exec -it edp-db sh -c "psql -U edp  <<EOF
 
-ALTER SERVER edp  OPTIONS (SET dbserver '//ora.syncremocra.eaudeparis.fr:1521/edpsigdev');
+ALTER SERVER edp  OPTIONS (SET dbserver '//ora.syncremocra.eaudeparis.fr:1521/EDPSIGDEV');
 
 ALTER USER MAPPING FOR edp SERVER edp OPTIONS (SET user 'EDP_REMOCRA', SET password '1234');
 

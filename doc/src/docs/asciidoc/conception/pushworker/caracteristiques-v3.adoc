@@ -1,0 +1,145 @@
+= Conception - Mise à jour des caractéristiques REMOcRA V3
+Eau de Paris - Synchronisation Remocra
+v${project.version}, ${timestamp}
+
+:toc:
+:toclevels: 3
+
+* link:../../index.html[Accueil]
+* link:../regles-metier.html[Conception - vue d'ensemble]
+* link:../visites-v3.html[Conception - traitement des visites REMOcRA V3]
+
+== Objet et périmètre
+
+Ce document décrit le comportement *actuellement implémenté* pour les messages
+`CARACTERISTIQUES`. Il couvre les mises à jour des caractéristiques PIBI et PENA
+envoyées par le push-worker à REMOcRA V3.
+
+Le changedatacapture crée un message `CARACTERISTIQUES` lorsqu'une modification des données
+de pression ou de débit est détectée dans les vues Oracle. Le push-worker détermine ensuite le
+type réel du PEI depuis REMOcRA et appelle le service de caractéristiques correspondant.
+
+== Enchaînement commun
+
+Pour chaque message `CARACTERISTIQUES`, le push-worker :
+
+. charge la traçabilité locale du PEI ;
+. lit dans REMOcRA le PEI puis ses caractéristiques actuelles :
+  `GET /deci/pei/{reference}` et `GET /deci/pei/{reference}/caracteristiques` ;
+. lit les natures de PEI PIBI et PENA :
+  `GET /deci/referentiel/pibi/naturesPEI` et `GET /deci/referentiel/pena/naturesPEI` ;
+. détermine si la nature du PEI REMOcRA est de type PIBI ou PENA ;
+. construit le payload du type déterminé ;
+. appelle l'un des services suivants par `PUT` :
+  `PUT /deci/pei/{reference}/pibi-caracteristiques` ou
+  `PUT /deci/pei/{reference}/pena-caracteristiques`.
+
+Le message est traité seulement si la réponse HTTP est `200` ou `201`.
+
+== Référentiels locaux utilisés
+
+Le traitement PIBI utilise deux correspondances stockées par Sync-remocra :
+
+|===
+|Donnée source |Table locale |Valeur envoyée
+
+|`diametre`
+|`referentiel_hydrant_diametres`, recherche par `code_edp`
+|`code_bspp`, envoyé comme `codeDiametre`
+
+|modèle EDP non vide
+|`referentiel_marques_modeles`, recherche insensible à la casse par `code_modele_edp`
+|`code_marque_remocra` et `code_modele_remocra`
+|===
+
+Une absence de diamètre dans le référentiel génère l'erreur interne `I1001`.
+Une absence de marque/modèle pour un modèle EDP renseigné génère l'erreur interne `I1000`.
+Une nature de PEI REMOcRA absente des référentiels PIBI et PENA génère `I1004`.
+
+== Cas PIBI
+
+=== Service appelé
+
+`PUT /deci/pei/{reference}/pibi-caracteristiques`
+
+=== Payload envoyé
+
+|===
+|Clé |Origine
+
+|`codeDiametre`
+|Correspondance locale du diamètre EDP.
+
+|`diametreCanalisation`
+|Valeur locale `diametre_canalisation`, convertie en entier, ou `null`.
+
+|`peiJumele`
+|Caractéristique REMOcRA existante `jumelage`, ou ancien nom `pibiJumele`.
+
+|`inviolabilite`
+|Caractéristique REMOcRA existante `inviolabilite`, ou ancien nom `dispositifInviolabilite`.
+
+|`renversable`, `anneeFabrication`
+|Caractéristiques REMOcRA existantes.
+
+|`codeMarque`, `codeModele`
+|Correspondance locale de la marque et du modèle EDP. Si aucun modèle EDP n'est renseigné, les valeurs sont `null`.
+
+|`codeTypeReseau`
+|Caractéristique REMOcRA `natureReseau`, ou ancien nom `typeReseauCode`.
+
+|`codeTypeCanalisation`
+|Caractéristique REMOcRA `natureCanalisation`, ou ancien nom `typeCanalisationCode`.
+
+|`reseauSurpresse`
+|Caractéristique REMOcRA `reseauSurpresse`, ou ancien nom `surpresse`.
+
+|`reseauAdditive`
+|Caractéristique REMOcRA `reseauAdditive`, ou ancien nom `additive`.
+|===
+
+Les mesures d'essai EDP ne sont pas placées dans le payload PIBI de caractéristiques. Elles sont
+transmises par une visite `PIQP` ou `MANUELLE`, lorsque le changedatacapture crée le message de
+visite correspondant. Voir link:../visites-v3.html[le traitement des visites].
+
+== Cas PENA
+
+=== Service appelé
+
+`PUT /deci/pei/{reference}/pena-caracteristiques`
+
+=== Payload envoyé
+
+|===
+|Clé |Origine
+
+|`capaciteIllimitee`
+|Caractéristique REMOcRA existante `illimite`, ou ancien nom `capaciteIllimitee`.
+
+|`capaciteIncertaine`
+|Caractéristique REMOcRA existante `incertaine`, ou ancien nom `capaciteIncertaine`.
+
+|`capacite`
+|Caractéristique REMOcRA existante.
+
+|`quantiteAppoint`
+|Caractéristique REMOcRA existante `debitAppoint`, ou ancien nom `quantiteAppoint`.
+
+|`codeMateriau`
+|Caractéristique REMOcRA existante `codeMateriau`, ou ancien nom `materiauCode`.
+
+|`equipeHBE`
+|Caractéristique REMOcRA existante.
+|===
+
+Le payload PENA conserve donc les caractéristiques déjà présentes dans REMOcRA. Le code actuel
+n'alimente pas ces champs avec des valeurs issues de la traçabilité EDP.
+
+== Limites fonctionnelles à connaître
+
+* Le push-worker ne déduit pas le type PIBI ou PENA à partir d'un libellé EDP : il utilise la
+  nature du PEI retournée par REMOcRA.
+* Les correspondances diamètre, marque et modèle relèvent des tables locales de référentiel ;
+  elles doivent être maintenues si les codes EDP ou REMOcRA évoluent.
+* Une erreur de référentiel, de lecture ou d'appel API applique le cycle de reprise décrit dans
+  link:traitement-messages.html[le traitement des messages].

@@ -5,13 +5,13 @@ import static fr.eaudeparis.syncremocra.db.model.tables.TracabilitePei.TRACABILI
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.Message;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TracabilitePei;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.VueErreurToNotify;
 import fr.eaudeparis.syncremocra.mail.MailUtil;
 import fr.eaudeparis.syncremocra.notification.NotificationSettings;
 import fr.eaudeparis.syncremocra.repository.erreur.ErreurRepository;
-import fr.eaudeparis.syncremocra.repository.message.model.MessageModel;
 import fr.eaudeparis.syncremocra.util.JSONUtil;
 import fr.eaudeparis.syncremocra.util.RequestManager;
 import java.io.*;
@@ -44,6 +44,8 @@ public class NotificationJob implements Job {
   @Inject NotificationSettings settings;
 
   @Inject RequestManager requestManager;
+
+  @Inject ApiEndpoints apiEndpoints;
 
   @Inject
   public NotificationJob(MailUtil mailer, ErreurRepository erreurRepository, DSLContext context) {
@@ -193,7 +195,7 @@ public class NotificationJob implements Job {
 
       try {
         String indispoEnCours =
-            this.requestManager.sendGetRequest("/api/deci/pei/" + traca.getReference());
+            this.requestManager.sendGetRequest(apiEndpoints.pei(traca.getReference()));
 
         TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
         Map<String, Object> dataHydrant = mapper.readValue(indispoEnCours, typeRef);
@@ -243,34 +245,6 @@ public class NotificationJob implements Job {
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
-    }
-  }
-
-  public void sendNotifConnexionOk(MessageModel message) {
-
-    try {
-
-      TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
-      String objet = "La synchro avec REMOCRA est à nouveau opérationnelle";
-
-      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-      String msg =
-          "<p>"
-              + "La synchronisation avec REMOCRA est à nouveau opérationnelle"
-              + "<br />"
-              + "Les messages en attente vont être mis à jour"
-              + "</p>";
-
-      this.send(this.getListContextKeyEmail().get("REMOCRA_SYSTEME"), objet, msg);
-      logger.info("L'api est à nouveau joignable un mail pour prévenir va partir");
-      context
-          .update(MESSAGE)
-          .set(MESSAGE.STATUT, "TRAITE")
-          .where(MESSAGE.ID.eq(message.getId()))
-          .execute();
-
-    } catch (Exception e) {
-      throw new RuntimeException(e);
     }
   }
 }

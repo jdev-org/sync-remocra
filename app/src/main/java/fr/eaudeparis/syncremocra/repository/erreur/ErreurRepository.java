@@ -15,8 +15,12 @@ import java.util.Optional;
 import javax.inject.Inject;
 import org.jooq.DSLContext;
 import org.jooq.XML;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ErreurRepository {
+
+  private static final Logger logger = LoggerFactory.getLogger(ErreurRepository.class);
 
   private final DSLContext context;
 
@@ -40,6 +44,15 @@ public class ErreurRepository {
             .selectFrom(TYPE_ERREUR)
             .where(TYPE_ERREUR.CODE.equal(codeErreur))
             .fetchOneInto(TypeErreurModel.class);
+
+    if (typeErreur == null) {
+      logger.warn(
+          "Type d'erreur inconnu, aucune notification persistée. codeErreur={}, idMessage={}, message={}",
+          codeErreur,
+          idMessage,
+          message);
+      return;
+    }
 
     /* Si c'est une erreur de connexion (base Oracle/API), on ne rajoute pas l'erreur si il en existe déjà
       une identique qui n'a pas encore été notifiée

@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.inject.persist.Transactional;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.ReferentielMarquesModeles;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TracabilitePei;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TypeErreur;
@@ -27,19 +28,17 @@ import fr.eaudeparis.syncremocra.repository.typeErreur.model.TypeErreurModel;
 import fr.eaudeparis.syncremocra.util.APIAuthentException;
 import fr.eaudeparis.syncremocra.util.APIConnectionException;
 import fr.eaudeparis.syncremocra.util.InternalException;
-import fr.eaudeparis.syncremocra.util.JSONUtil;
 import fr.eaudeparis.syncremocra.util.RequestException;
 import fr.eaudeparis.syncremocra.util.RequestManager;
 import java.net.HttpURLConnection;
+import java.text.Normalizer;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.inject.Inject;
@@ -62,6 +61,8 @@ public class MessageRepository {
   }
 
   @Inject RequestManager requestManager;
+
+  @Inject ApiEndpoints apiEndpoints;
 
   @Inject PeiRepository peiRepository;
 
@@ -97,6 +98,7 @@ public class MessageRepository {
     for (int i = 0; i < messagesATraiter.size() && continuer; i++) {
       MessageModel message = messagesATraiter.get(i);
       logger.info("Traitement message " + message.getId());
+
       ObjectMapper mapper = new ObjectMapper();
 
       String reference =
@@ -125,22 +127,30 @@ public class MessageRepository {
 
         } else if ("CARACTERISTIQUES".equalsIgnoreCase(message.getType())) {
           logger.debug("Traitement CARACTERISTIQUES " + message.getId());
-          data = this.traiterMessageCaracteristiques(message, reference);
-          path = "/api/deci/pei/" + reference + "/caracteristiques";
+          PeiCaracteristiquesUpdate update =
+              this.traiterMessageCaracteristiques(message, reference);
+          data = update.getPayload();
+          path = update.getPath();
           methode = "PUT";
         } else if ("SPECIFIQUE".equalsIgnoreCase(message.getType())) {
           logger.debug("Traitement SPECIFIQUE " + message.getId());
           data = this.traiterMessageSpecifique(message, reference);
-          path = "/api/deci/pei/" + reference + "/visites";
+          path = apiEndpoints.peiVisites(reference);
           methode = "POST";
         } else if ("MANUELLE".equalsIgnoreCase(message.getType())) {
           logger.debug("Traitement MANUELLE " + message.getId());
           data = this.traiterMessageManuelle(message, reference);
-          path = "/api/deci/pei/" + reference + "/visites";
+          path = apiEndpoints.peiVisites(reference);
           methode = "POST";
         }
 
-        String json = mapper.writeValueAsString(data);
+        ObjectNode trackedData =
+            ("SPECIFIQUE".equalsIgnoreCase(message.getType())
+                    || "MANUELLE".equalsIgnoreCase(message.getType()))
+                ? VisitPayloadTracker.toTrackedPayload(data)
+                : data;
+        String json = mapper.writeValueAsString(trackedData);
+        String requestJson = mapper.writeValueAsString(data);
 
         context
             .update(MESSAGE)
@@ -153,12 +163,8 @@ public class MessageRepository {
          * a déjà été traitée par RequestManager (éventuellement par une ResponseException)
          */
         if (methode != null && path != null && json != null) {
-          Integer codeRetour = this.requestManager.sendRequest(methode, path, json);
-          // si j'ai eu une réponse de l'api, c'est qu'elle fonctionne
-          if (codeRetour != null) {
-            // si le message était en erreur, on notifie que finalement le message est passé
-            notifRetourNormal(message);
-          }
+          Integer codeRetour = this.requestManager.sendRequest(methode, path, requestJson);
+
           if (codeRetour != null
               && (codeRetour == HttpURLConnection.HTTP_CREATED
                   || codeRetour == HttpURLConnection.HTTP_OK)) { // Visite créée avec succès
@@ -247,23 +253,22 @@ public class MessageRepository {
 
       } catch (APIConnectionException
           | APIAuthentException e) { // Erreur de connexion à l'API (connexion API ou authent)
-        boolean rejouer = false;
+
         String typeErreur = null;
         if (e instanceof APIConnectionException) {
-
-          rejouer = true; // Si erreur réseau alors on autorise de retenter la prochaine fois
           typeErreur = "0003";
-
           logger.info("Erreur de connexion à l'API détectée, fin du traitement des messages");
-          logger.info(
-              "Une nouvelle tentative de synchronisation sera effectuée lors du prochain"
-                  + " déclenchement du PushWorker");
         } else if (e instanceof APIAuthentException) {
-
           typeErreur = "0200";
           logger.info("Erreur d'authentification à l'API détectée, fin du traitement des messages");
         }
-
+        String messageErreur =
+            context
+                .select(TYPE_ERREUR.MESSAGE_ERREUR)
+                .from(TYPE_ERREUR)
+                .where(TYPE_ERREUR.CODE.eq(typeErreur))
+                .fetchOneInto(String.class);
+        continuer = false;
         // Nombre de rejeu max pour une erreur de connexion à l'API
         Integer nbSynchroMax =
             context
@@ -272,20 +277,13 @@ public class MessageRepository {
                 .where(TYPE_ERREUR.CODE.eq(typeErreur))
                 .fetchOneInto(Integer.class);
 
-        String messageErreur =
-            context
-                .select(TYPE_ERREUR.MESSAGE_ERREUR)
-                .from(TYPE_ERREUR)
-                .where(TYPE_ERREUR.CODE.eq(typeErreur))
-                .fetchOneInto(String.class);
-        continuer = false;
-
         // Pour ce PEi et tous les PEI restants, on augmente le nombre de
         // synchronisations, et on
         // détermine si on peut les rejouer
         for (int j = i; j < messagesATraiter.size(); j++) {
           MessageModel m = messagesATraiter.get(j);
 
+          boolean rejouer = (m.getSynchronisations() + 1 < nbSynchroMax);
           context
               .update(MESSAGE)
               .set(MESSAGE.STATUT, "EN ERREUR")
@@ -295,14 +293,14 @@ public class MessageRepository {
               .where(MESSAGE.ID.eq(m.getId()))
               .execute();
 
-          // On informe que le pei n'a pas été mis a jour pendant X essais
-          // X étant le nombre d'itérations dans edp.type_erreur
-          if (m.getSynchronisations() == 0 || m.getSynchronisations() == nbSynchroMax) {
+          // Problème de connexion persitant : on informe que les changements n'ont pu
+          // être transmis
+          if (!rejouer) {
             this.erreurRepository.addError("I1003", messageErreur, Long.valueOf(m.getId()));
           }
         }
         logger.info(
-            "Traitement terminé, une erreur a été rencontrée; mise en erreur des messages"
+            "Traitement rerminé, une erreur a été rencontrée; mise en erreur des messages"
                 + " restants");
       }
     }
@@ -332,42 +330,63 @@ public class MessageRepository {
             .selectFrom(TRACABILITE_PEI)
             .where(TRACABILITE_PEI.ID.eq(message.getId_traca_pei()))
             .fetchOneInto(TracabilitePei.class);
+    List<String> currentIndispoMotifs = getCurrentIndispoMotifs(traca);
+    boolean shouldCreateTemporaryUnavailability =
+        shouldCreateTemporaryUnavailability(currentIndispoMotifs);
 
     // On récupère l'éventuelle indispo temporaire en cours
-    Map<String, String> params = new HashMap<String, String>();
-    params.put("organismeApi", "EAU_DE_PARIS");
-    params.put("numeroHydrant", reference);
-    params.put("statut", "EN_COURS");
     String indispoEnCours =
-        this.requestManager.sendGetRequest("/api/deci/indispoTemporaire", params);
+        this.requestManager.sendGetRequest(
+            apiEndpoints.indispoTemporaire(), IndispoTemporaireMapper.buildSearchParams());
+    TypeReference<ArrayList<Map<String, Object>>> typeRef =
+        new TypeReference<ArrayList<Map<String, Object>>>() {};
+    ArrayList<Map<String, Object>> dataIndispoEnCours = mapper.readValue(indispoEnCours, typeRef);
+    Map<String, Object> indispoActive =
+        IndispoTemporaireMapper.findActiveIndispo(dataIndispoEnCours, reference);
+    List<String> trackedIndispoMotifs = getTrackedIndispoMotifs(reference);
 
     // Si Indisponible, on créé une indispo temporaire s'il n'en existe pas déjà une
     // sur ce PEI
     if ("Indisponible".equalsIgnoreCase(traca.getEtat())) {
-      if (indispoEnCours.length() <= 2) { // Null ou tableau vide
+      if (!shouldCreateTemporaryUnavailability) {
+        logger.info(
+            "PEI "
+                + reference
+                + " indisponible - aucun motif ne justifie une indisponibilité temporaire");
+        this.remonteeMotifsIndispo(message, reference);
+        if (indispoActive != null) {
+          logger.info(
+              "PEI "
+                  + reference
+                  + " indisponible - clôture de l'indispo temporaire existante devenue"
+                  + " invalide");
+          indispoTemp.put("methode", "PUT");
+          indispoTemp.put(
+              "path",
+              apiEndpoints.indispoTemporaire(IndispoTemporaireMapper.getIndispoId(indispoActive)));
+          indispoTemp.set(
+              "data",
+              IndispoTemporaireMapper.buildUpdatePayload(
+                  mapper, reference, indispoActive, traca.getDateMajE()));
+          return indispoTemp;
+        }
+        context
+            .update(MESSAGE)
+            .set(MESSAGE.STATUT, "TRAITE")
+            .where(MESSAGE.ID.eq(message.getId()))
+            .execute();
+      } else if (indispoActive == null) {
         logger.info("PEI " + reference + " indisponible - Création d'une indispo temporaire EDP");
         indispoTemp.put("methode", "POST");
-        indispoTemp.put("path", "/api/deci/indispoTemporaire");
-        ObjectNode data = mapper.createObjectNode();
-        ArrayNode hydrants = mapper.createArrayNode();
-        hydrants.add(reference);
-
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        indispoTemp.put("path", apiEndpoints.indispoTemporaire());
         try {
-          data.put("date_debut", traca.getDateMajE().format(formatter));
+          indispoTemp.set(
+              "data",
+              IndispoTemporaireMapper.buildCreatePayload(mapper, reference, traca.getDateMajE()));
         } catch (Exception e) {
           logger.error("Le champ date_maj_e présente une anomalie (traca " + traca.getId() + ")");
           throw e;
         }
-        data.put("motif", "Mise en indisponibilité Eau de Paris");
-        data.put("statut", "PLANIFIE");
-        data.put("bascule_auto_dispo", true);
-        data.put("bascule_auto_indispo", true);
-        data.put("mel_avant_dispo", true);
-        data.put("mel_avant_indispo", true);
-        data.set("hydrants", hydrants);
-
-        indispoTemp.set("data", data);
 
         this.remonteeMotifsIndispo(message, reference);
         return indispoTemp;
@@ -380,111 +399,68 @@ public class MessageRepository {
 
         this.remonteeMotifsIndispo(message, reference);
 
-        notifRetourNormal(message);
         context
             .update(MESSAGE)
             .set(MESSAGE.STATUT, "TRAITE")
             .where(MESSAGE.ID.eq(message.getId()))
             .execute();
       }
-    } else if ("Disponible".equalsIgnoreCase(traca.getEtat())) {
-      // Si disponible, on vérifie s'il y a des IT "en cours"
-      if (indispoEnCours.length() <= 2) {
-        // s'il n'y en a pas on vérifie les "PLANIFIE"
-        params.put("organismeApi", "EAU_DE_PARIS");
-        params.put("numeroHydrant", reference);
-        params.put("statut", "PLANIFIE");
-        String indispoPlanifie =
-            this.requestManager.sendGetRequest("/api/deci/indispoTemporaire", params);
-
-        if (indispoPlanifie.length()
-            > 2) { // S'il existe une indispo planifie, on vérifie si elle aurait dû être en
-          // cours"
-
-          TypeReference<ArrayList<Map<String, Object>>> typeRef =
-              new TypeReference<ArrayList<Map<String, Object>>>() {};
-          ArrayList<Map<String, Object>> dataIndispoPlanifie =
-              mapper.readValue(indispoPlanifie, typeRef);
-
-          LocalDateTime dateDebut =
-              JSONUtil.getLocalDateTime(
-                  dataIndispoPlanifie.get(0), "date_debut", "yyyy-MM-dd HH:mm");
-          if (dateDebut.isAfter(traca.getDateTraca())) {
-
-            // si la date de début n'a pas commencé, il est normal qu'on ai cette IT
-            // planifiée
-            // message traité
-
-            traiterIndispoTemporaire(message, reference);
-
-          } else {
-            // sinon on indique dans les logs qu'il faut laisser le temps au traitement
-            // REMOcRA de
-            // passer le PEI en indispo (IT) et on laisse le message a traiter pour la
-            // prochaine
-            // fois
-            logger.info(
-                "PEI "
-                    + reference
-                    + " : Une indisponibilité temporaire est présente mais n'a pas encore"
-                    + " commencée. Attente de la mise en indisponibilité côté Remocra avant de"
-                    + " réessayer de traiter ce message");
-          }
-        } else {
-
-          traiterIndispoTemporaire(message, reference);
+    } else if ("Disponible"
+        .equalsIgnoreCase(
+            traca
+                .getEtat())) { // Si disponible, on met fin à l'indispo temporaire active sur ce pei
+      if (indispoActive == null) {
+        logger.info("PEI " + reference + " disponible - Aucune indispo temporaire EDP active");
+        if (!trackedIndispoMotifs.isEmpty()) {
+          logger.info(
+              "PEI " + reference + " disponible - remontée de la levée des motifs EDP mémorisés");
+          this.remonteeMotifsIndispo(message, reference);
         }
-
+        context
+            .update(MESSAGE)
+            .set(MESSAGE.STATUT, "TRAITE")
+            .where(MESSAGE.ID.eq(message.getId()))
+            .execute();
       } else {
         logger.info("PEI " + reference + " disponible - Fin de l'indispo temporaire EDP active");
-        TypeReference<ArrayList<Map<String, Object>>> typeRef =
-            new TypeReference<ArrayList<Map<String, Object>>>() {};
-        ArrayList<Map<String, Object>> dataIndispoEnCours =
-            mapper.readValue(indispoEnCours, typeRef);
-        Long idIndispoTemp = JSONUtil.getLong(dataIndispoEnCours.get(0), "identifiant");
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
         indispoTemp.put("methode", "PUT");
-        indispoTemp.put("path", "/api/deci/indispoTemporaire/" + idIndispoTemp);
+        indispoTemp.put(
+            "path",
+            apiEndpoints.indispoTemporaire(IndispoTemporaireMapper.getIndispoId(indispoActive)));
 
-        ObjectNode data = mapper.createObjectNode();
-
-        data.put("date_debut", JSONUtil.getString(dataIndispoEnCours.get(0), "date_debut"));
-        data.put("date_fin", traca.getDateMajE().format(formatter));
-        data.put("motif", "Mise en indisponibilité Eau de Paris");
-        data.put("statut", "EN_COURS");
-        data.put("bascule_auto_dispo", true);
-        data.put("bascule_auto_indispo", true);
-        data.put("mel_avant_dispo", true);
-        data.put("mel_avant_indispo", true);
-
-        indispoTemp.set("data", data);
-        this.remonteeMotifsIndispo(message, reference);
-        notifRetourNormal(message);
+        indispoTemp.set(
+            "data",
+            IndispoTemporaireMapper.buildUpdatePayload(
+                mapper, reference, indispoActive, traca.getDateMajE()));
+        if (!trackedIndispoMotifs.isEmpty()) {
+          this.remonteeMotifsIndispo(message, reference);
+        }
         return indispoTemp;
       }
     }
     return null;
   }
 
-  private void traiterIndispoTemporaire(MessageModel message, String reference) {
-    logger.info(
-        "PEI "
-            + reference
-            + " disponible - Aucune indispo temporaire EDP active, fin du traitement du message");
-    notifRetourNormal(message);
-    context
-        .update(MESSAGE)
-        .set(MESSAGE.STATUT, "TRAITE")
-        .where(MESSAGE.ID.eq(message.getId()))
-        .execute();
+  private List<String> getCurrentIndispoMotifs(TracabilitePei traca) {
+    return context
+        .select(DSL.upper(TRACABILITE_INDISPO.MOTIF_INDISPO))
+        .from(TRACABILITE_INDISPO)
+        .where(TRACABILITE_INDISPO.ID_TRACA_PEI.eq(traca.getId().longValue()))
+        .fetchInto(String.class);
   }
 
-  public void notifRetourNormal(MessageModel message) {
-    // si le message était en erreur, on notifie que finalement le message est passé
-    if ("EN ERREUR".equalsIgnoreCase(message.getStatut())) {
-      notificationJob.sendNotifConnexionOk(message);
-    }
+  /**
+   * Récupère les motifs EDP qui ont été précédemment remontés à REMOcRA pour un PEI.
+   *
+   * @param reference référence du PEI
+   * @return motifs d'indisponibilité mémorisés localement
+   */
+  private List<String> getTrackedIndispoMotifs(String reference) {
+    return context
+        .select(MOTIF_INDISPO_ACTIF.MOTIF)
+        .from(MOTIF_INDISPO_ACTIF)
+        .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(reference))
+        .fetchInto(String.class);
   }
 
   /**
@@ -518,6 +494,7 @@ public class MessageRepository {
     boolean updateMotifIndispo = false;
     boolean deleteMotifIndispo = false;
     boolean arretEauEnCours = false;
+    boolean ajoutSansEau = false;
 
     try {
       TracabilitePei traca =
@@ -540,32 +517,28 @@ public class MessageRepository {
                 .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(traca.getReference()))
                 .fetchInto(String.class);
 
-        // "ARRET EAU" est une anomalie qui ne donne pas lieu à une visite dans REMOcRA
-        // si elle est
-        // la seule anomalie
-        if (motifIndispo.size() == 1 && motifIndispo.contains("ARRET EAU")) {
-          logger.info(
-              "Mise en disponible avec pour seul motif actif ARRET EAU : pas de création de"
-                  + " visite");
-          context
-              .deleteFrom(MOTIF_INDISPO_ACTIF)
-              .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(traca.getReference()))
-              .execute();
+        if (!shouldCreateIndispoClosureVisit(motifIndispo)) {
+          if (motifIndispo.size() == 1 && "ARRET EAU".equalsIgnoreCase(motifIndispo.get(0))) {
+            logger.info(
+                "Mise en disponible avec pour seul motif actif ARRET EAU : pas de création de"
+                    + " visite");
+            context
+                .deleteFrom(MOTIF_INDISPO_ACTIF)
+                .where(MOTIF_INDISPO_ACTIF.REFERENCE.eq(traca.getReference()))
+                .execute();
+          }
           return null;
-        }
-
-        // les indisposActive ne concerne pas qu'arret eau
-        else {
+        } else {
           logger.info(
-              "Mise en disponible avec D'AUTRE motif actif que ARRET EAU : : Création de visite");
+              "Mise en disponible avec des motifs EDP actifs : création de visite de levée");
           /**
-           * On remplit le tableau anomaliesAControler pour confirmer dans la visite que les
+           * On remplit le tableau anomaliesAControler à pour confirmer dans la visite que les
            * anomalies ont été controllées mais pas constantées
            */
           for (String code : motifIndispo) {
             anomaliesAControler.add(code);
           }
-          // ici, on ne return pas le null pour continuer l'execution et descendre à la
+          // ici on ne return pas le null pour continuer l'execution et descendre a la
           // création de
           // la visite
 
@@ -580,7 +553,6 @@ public class MessageRepository {
                 .select(DSL.upper(TRACABILITE_INDISPO.MOTIF_INDISPO))
                 .from(TRACABILITE_INDISPO)
                 .where(TRACABILITE_INDISPO.ID_TRACA_PEI.eq(traca.getId().longValue()))
-                .and(TRACABILITE_INDISPO.STATUT_MOTIF_INDISPO.eq("EN COURS"))
                 .fetchInto(String.class);
 
         // Récupération des motifs d'indispo actuellement actifs ajoutés via une
@@ -690,13 +662,22 @@ public class MessageRepository {
         arrayAnomaliesConstatees.add(s);
       }
 
-      visite.put("contexte", "NP");
+      if (ajoutSansEau) {
+        if (!codesBSPPControles.contains("BSPP_APSE")) {
+          arrayAnomaliesControlees.add("BSPP_APSE");
+        }
+        if (!codesBSPPConstates.contains("BSPP_APSE")) {
+          arrayAnomaliesConstatees.add("BSPP_APSE");
+        }
+      }
+
+      visite.put("typeVisite", "NP");
       visite.put("date", formatter.format(dateChangement));
       visite.set("anomaliesControlees", arrayAnomaliesControlees);
       visite.set("anomaliesConstatees", arrayAnomaliesConstatees);
       visite.put("agent1", "Eau de Paris");
 
-      String json = mapper.writeValueAsString(visite);
+      String json = mapper.writeValueAsString(VisitPayloadTracker.toTrackedPayload(visite));
       logger.info("JSON remontée des motifs d'indispo : " + json);
       context
           .update(MESSAGE)
@@ -705,7 +686,7 @@ public class MessageRepository {
           .execute();
 
       Integer codeRetour =
-          this.requestManager.sendRequest("POST", "/api/deci/pei/" + reference + "/visites", json);
+          this.requestManager.sendRequest("POST", apiEndpoints.peiVisites(reference), json);
       logger.info("Disponibilité: création d'une visite (retour : " + codeRetour + ")");
 
       // On modifie les motifs d'indispo actifs APRES la création de visite et si elle
@@ -760,17 +741,28 @@ public class MessageRepository {
    * @throws APIConnectionException Impossible de contacter l'API
    * @throws APIAuthentException Impossible de s'authentifier à l'API
    */
-  private ObjectNode traiterMessageCaracteristiques(MessageModel message, String reference)
+  private PeiCaracteristiquesUpdate traiterMessageCaracteristiques(
+      MessageModel message, String reference)
       throws APIConnectionException, APIAuthentException, RequestException, InternalException {
     try {
+      String dataPeiSpecifique = this.requestManager.sendGetRequest(apiEndpoints.pei(reference));
       String dataPei =
-          this.requestManager.sendGetRequest("/api/deci/pei/" + reference + "/caracteristiques");
+          this.requestManager.sendGetRequest(apiEndpoints.peiCaracteristiques(reference));
+      String dataNaturesPibi =
+          this.requestManager.sendGetRequest(
+              apiEndpoints.referentielNaturesPei(PeiType.PIBI.getApiValue()));
+      String dataNaturesPena =
+          this.requestManager.sendGetRequest(
+              apiEndpoints.referentielNaturesPei(PeiType.PENA.getApiValue()));
 
       ObjectMapper mapper = new ObjectMapper();
       TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
+      TypeReference<List<Map<String, Object>>> listTypeRef =
+          new TypeReference<List<Map<String, Object>>>() {};
+      Map<String, Object> dataPeiDetail = mapper.readValue(dataPeiSpecifique, typeRef);
       Map<String, Object> data = mapper.readValue(dataPei, typeRef);
-
-      ObjectNode caracteristiques = mapper.createObjectNode();
+      List<Map<String, Object>> pibiNatures = mapper.readValue(dataNaturesPibi, listTypeRef);
+      List<Map<String, Object>> penaNatures = mapper.readValue(dataNaturesPena, listTypeRef);
 
       TracabilitePei traca =
           context
@@ -820,34 +812,26 @@ public class MessageRepository {
         }
       }
 
-      // Données EDP
-      caracteristiques.put("codeMarque", codeMarque);
-      caracteristiques.put("codeModele", codeModele);
-      caracteristiques.put(
-          "diametreCanalisation",
-          traca.getDiametreCanalisation() != null
-              ? Integer.valueOf(traca.getDiametreCanalisation())
-              : null);
-      caracteristiques.put("codeDiametre", codeDiametre);
+      PeiType peiType = PeiTypeResolver.resolve(dataPeiDetail, pibiNatures, penaNatures);
+      if (peiType == null) {
+        TypeErreur typeErreur =
+            context
+                .selectFrom(TYPE_ERREUR)
+                .where(TYPE_ERREUR.CODE.equal("I1004"))
+                .fetchOneInto(TypeErreur.class);
+        throw new InternalException(typeErreur.getCode(), typeErreur.getMessageErreur());
+      }
 
-      // Consolidation données remocra
-      caracteristiques.put("capaciteIllimitee", JSONUtil.getBoolean(data, "illimite"));
-      caracteristiques.put("ressourceIncertaine", JSONUtil.getBoolean(data, "incertaine"));
-      caracteristiques.put("codeNatureReseau", JSONUtil.getString(data, "natureReseau"));
-      caracteristiques.put(
-          "codeNatureCanalisation", JSONUtil.getString(data, "natureCanalisation"));
-      caracteristiques.put("reseauSurpresse", JSONUtil.getBoolean(data, "reseauSurpresse"));
-      caracteristiques.put("reseauAdditive", JSONUtil.getBoolean(data, "reseauAdditive"));
-      caracteristiques.put("capacite", JSONUtil.getString(data, "capacite"));
-      caracteristiques.put("debitAppoint", JSONUtil.getDouble(data, "debitAppoint"));
-      caracteristiques.put("codeMateriau", JSONUtil.getString(data, "codeMateriau"));
-      caracteristiques.put("equipeHBE", JSONUtil.getBoolean(data, "equipeHBE"));
-      caracteristiques.put("peiJumele", JSONUtil.getString(data, "jumelage"));
-      caracteristiques.put("inviolabilite", JSONUtil.getBoolean(data, "inviolabilite"));
-      caracteristiques.put("renversable", JSONUtil.getBoolean(data, "renversable"));
-      caracteristiques.put("anneeFabrication", JSONUtil.getInteger(data, "anneeFabrication"));
-
-      return caracteristiques;
+      return PeiCaracteristiquesUpdateFactory.create(
+          mapper,
+          apiEndpoints,
+          peiType,
+          reference,
+          traca,
+          data,
+          codeDiametre,
+          codeMarque,
+          codeModele);
 
     } catch (JsonProcessingException e) {
       e.printStackTrace();
@@ -863,13 +847,10 @@ public class MessageRepository {
    * @return Un json contenant les données de la visite à envoyer à Remocra
    */
   private ObjectNode traiterMessageSpecifique(MessageModel message, String reference)
-      throws APIConnectionException, RequestException, JsonProcessingException,
-          APIAuthentException {
+      throws APIConnectionException, RequestException, JsonProcessingException, APIAuthentException,
+          InternalException {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode visite = mapper.createObjectNode();
-
-    ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();
-    ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
 
     TracabilitePei traca =
         context
@@ -878,18 +859,26 @@ public class MessageRepository {
             .fetchOneInto(TracabilitePei.class);
 
     String typeDerniereVisite = traca.getTypeDerniereVisite().toUpperCase();
+    String typeVisite = VisitTypeMapper.toRemocraType(typeDerniereVisite);
 
-    if (typeDerniereVisite.startsWith("PICF")) {
-      visite.put("contexte", "CTRL");
-    } else if (typeDerniereVisite.startsWith("PIQP")) {
-      visite.put("contexte", "CTRL");
-      visite = this.recuperationsValeursDebitPression(visite, traca);
+    if ("CTP".equals(typeVisite)) {
+      visite.put("typeVisite", "CTP");
+      if (typeDerniereVisite.startsWith("PIQP")) {
+        visite = this.recuperationsValeursDebitPression(visite, traca);
+      }
     } else if ((typeDerniereVisite.startsWith("NPQP"))) {
       // Dans le cas d'une NPQP, le comportement attendu est identique à celui d'une
       // intervention manuelle (NP avec anomalies sans débit/pression)
       return this.traiterMessageManuelle(message, reference);
-    } else if ((typeDerniereVisite.startsWith("NP"))) {
-      visite.put("contexte", "NP");
+    } else if ("NP".equals(typeVisite)) {
+      visite.put("typeVisite", "NP");
+    } else {
+      TypeErreur typeErreur =
+          context
+              .selectFrom(TYPE_ERREUR)
+              .where(TYPE_ERREUR.CODE.equal("2001"))
+              .fetchOneInto(TypeErreur.class);
+      throw new InternalException(typeErreur.getCode(), typeErreur.getMessageErreur());
     }
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -919,13 +908,10 @@ public class MessageRepository {
    * @return Un json contenant les données de la visite à envoyer à Remocra
    */
   private ObjectNode traiterMessageManuelle(MessageModel message, String reference)
-      throws APIConnectionException, RequestException, JsonProcessingException,
-          APIAuthentException {
+      throws APIConnectionException, RequestException, JsonProcessingException, APIAuthentException,
+          InternalException {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode visite = mapper.createObjectNode();
-
-    ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();
-    ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
 
     TracabilitePei traca =
         context
@@ -941,8 +927,9 @@ public class MessageRepository {
     } else {
       visite.put("date", traca.getDateEssai().format(formatter));
     }
-    visite.put("contexte", "NP");
+    visite.put("typeVisite", "NP");
     visite.put("agent1", "Eau de Paris");
+    appendHydraulicMeasurementsIfPresent(visite, traca);
     visite = this.recuperationAnomalies(visite, traca);
     return visite;
   }
@@ -955,18 +942,106 @@ public class MessageRepository {
    * @return Les données de la visite
    */
   private ObjectNode recuperationsValeursDebitPression(ObjectNode v, TracabilitePei traca) {
-    v.put(
+    return appendHydraulicMeasurementsIfPresent(v, traca);
+  }
+
+  /**
+   * Ajoute les mesures hydrauliques à la visite lorsqu'elles sont disponibles dans la traca.
+   *
+   * @param visitPayload payload de visite à enrichir
+   * @param traca ligne de tracabilité source
+   * @return payload enrichi, inchangé si aucune mesure n'est disponible
+   */
+  static ObjectNode appendHydraulicMeasurementsIfPresent(
+      ObjectNode visitPayload, TracabilitePei traca) {
+    if (!hasHydraulicMeasurements(traca)) {
+      return visitPayload;
+    }
+    visitPayload.put(
         "pression",
         (traca.getEssaiPressionStatique() != null)
             ? traca.getEssaiPressionStatique().doubleValue()
             : null);
-    v.put(
+    visitPayload.put(
         "pressionDynamique",
         (traca.getEssaiPressionDynamique() != null)
             ? traca.getEssaiPressionDynamique().doubleValue()
             : null);
-    v.put("debit", (traca.getEssaiDebit() != null) ? traca.getEssaiDebit().intValue() : null);
-    return v;
+    visitPayload.put(
+        "debit", (traca.getEssaiDebit() != null) ? traca.getEssaiDebit().intValue() : null);
+    return visitPayload;
+  }
+
+  /**
+   * @param traca ligne de tracabilité source
+   * @return {@code true} si au moins une mesure hydraulique est disponible
+   */
+  static boolean hasHydraulicMeasurements(TracabilitePei traca) {
+    return traca != null
+        && (traca.getEssaiPressionStatique() != null
+            || traca.getEssaiPressionDynamique() != null
+            || traca.getEssaiDebit() != null);
+  }
+
+  /**
+   * @param localVisitType type de dernière visite issu de WatGIS
+   * @return {@code true} si cette visite doit lever tous les points d'attention
+   */
+  static boolean shouldClearAllAnomalies(String localVisitType) {
+    if (localVisitType == null) {
+      return false;
+    }
+    String normalizedVisitType =
+        Normalizer.normalize(localVisitType, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "")
+            .toUpperCase();
+    return normalizedVisitType.contains("EN SERVICE")
+        || normalizedVisitType.contains("CONTROLE REALISE");
+  }
+
+  /**
+   * @param indispoMotifs motifs d'indisponibilité remontés par WatGIS pour une synchro
+   * @return {@code true} si au moins un motif justifie une indisponibilité temporaire REMOcRA
+   */
+  static boolean shouldCreateTemporaryUnavailability(List<String> indispoMotifs) {
+    if (indispoMotifs == null || indispoMotifs.isEmpty()) {
+      return false;
+    }
+    for (String indispoMotif : indispoMotifs) {
+      if (isTemporaryUnavailabilityEligibleMotif(indispoMotif)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Détermine si une remise en disponibilité doit créer une visite de levée des motifs EDP.
+   *
+   * @param trackedIndispoMotifs motifs précédemment remontés à REMOcRA
+   * @return {@code true} si une visite NP de levée doit être créée
+   */
+  static boolean shouldCreateIndispoClosureVisit(List<String> trackedIndispoMotifs) {
+    if (trackedIndispoMotifs == null || trackedIndispoMotifs.isEmpty()) {
+      return false;
+    }
+    return trackedIndispoMotifs.size() != 1
+        || !"ARRET EAU".equalsIgnoreCase(trackedIndispoMotifs.get(0));
+  }
+
+  /**
+   * @param indispoMotif motif d'indisponibilité source
+   * @return {@code true} si ce motif fait partie des seuls cas métier autorisant une IT
+   */
+  static boolean isTemporaryUnavailabilityEligibleMotif(String indispoMotif) {
+    if (indispoMotif == null) {
+      return false;
+    }
+    String normalizedMotif =
+        Normalizer.normalize(indispoMotif, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+", "")
+            .toUpperCase();
+    return normalizedMotif.contains("ARRET EAU") || normalizedMotif.contains("RENOUVEL");
   }
 
   /**
@@ -978,8 +1053,8 @@ public class MessageRepository {
    * @return Les données de la visite
    */
   private ObjectNode recuperationAnomalies(ObjectNode v, TracabilitePei traca)
-      throws APIConnectionException, RequestException, JsonProcessingException,
-          APIAuthentException {
+      throws APIConnectionException, RequestException, JsonProcessingException, APIAuthentException,
+          InternalException {
     String typeDerniereVisite =
         (traca.getTypeDerniereVisite() != null)
             ? traca.getTypeDerniereVisite().toUpperCase()
@@ -988,18 +1063,14 @@ public class MessageRepository {
     ObjectMapper mapper = new ObjectMapper();
     ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();
     ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
-    ArrayList<String> anomaliesBloquante =
-        this.peiRepository.getNaturesAnomaliesAccessibles(
-            traca.getReference(), v.get("contexte").textValue(), true);
     ArrayList<String> toutesAnomalies =
         this.peiRepository.getNaturesAnomaliesAccessibles(
-            traca.getReference(), v.get("contexte").textValue(), false);
+            traca.getReference(), v.get("typeVisite").textValue(), false);
 
     if (typeDerniereVisite != null) {
       // Aucune anomalie
-      if ((typeDerniereVisite.contains("EN SERVICE"))
-          || (typeDerniereVisite.contains("CONTROLE REALISE"))) {
-        for (String code : anomaliesBloquante) {
+      if (shouldClearAllAnomalies(typeDerniereVisite)) {
+        for (String code : toutesAnomalies) {
           arrayAnomaliesControlees.add(code);
         }
         v.set("anomaliesControlees", arrayAnomaliesControlees);
