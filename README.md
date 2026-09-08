@@ -76,6 +76,22 @@ Exemple pour Visual Studio Code .vscode/launch.json :
 }
 ```
 
+### Configuration de l'API REMOcRA
+
+Le client REMOcRA est configuré en v3 only avec authentification Keycloak / OIDC.
+
+Variables d'environnement disponibles :
+
+```sh
+API_HOST=http://localhost:8881
+API_BASE_PATH=/api
+API_AUTH_TYPE=keycloak
+API_KEYCLOAK_URL=https://keycloak.example
+API_KEYCLOAK_REALM=remocra
+API_KEYCLOAK_CLIENT_ID=sync-remocra
+API_KEYCLOAK_CLIENT_SECRET=change-me
+```
+
 
 
 ## Formatage de code (API)

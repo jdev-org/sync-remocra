@@ -1,71 +1,146 @@
 package fr.eaudeparis.syncremocra.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.api.ApiSettings;
 import fr.eaudeparis.syncremocra.repository.erreur.ErreurRepository;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class RequestManager {
 
+  private static final long TOKEN_EXPIRY_SAFETY_WINDOW_MILLIS = 60_000L;
+  private static final String API_AUTHENT_ERROR_CODE = "0200";
+  private static final String API_AUTHENT_ERROR_MESSAGE =
+      "Authentification refusée à l'API Remocra";
+  private static final String API_CONNECTION_ERROR_CODE = "0003";
+  private static final String API_CONNECTION_ERROR_MESSAGE =
+      "Impossible d'établir une connexion avec l'API Remocra";
+  private static final Pattern ERROR_CODE_PATTERN = Pattern.compile("^([A-Z]?\\d{4})\\b");
   private static Logger logger = LoggerFactory.getLogger(RequestManager.class);
 
   private final ApiSettings settings;
+  private final ApiEndpoints apiEndpoints;
+  private final ErrorReporter errorReporter;
+  private final ObjectMapper mapper = new ObjectMapper();
+  private String cachedAuthorizationHeader;
+  private long cachedAuthorizationHeaderExpiresAtMillis;
 
   @Inject private ErreurRepository erreurRepository;
 
   @Inject
-  RequestManager(ApiSettings settings) {
+  RequestManager(ApiSettings settings, ApiEndpoints apiEndpoints) {
+    this(settings, apiEndpoints, null);
+  }
+
+  /**
+   * Constructeur dédié aux tests pour remplacer le mécanisme de remontée d'erreurs.
+   *
+   * @param settings Configuration API
+   * @param apiEndpoints Fournisseur des chemins d'API centralisés
+   * @param errorReporter Reporteur d'erreurs de test, ou {@code null} pour utiliser le dépôt
+   */
+  RequestManager(ApiSettings settings, ApiEndpoints apiEndpoints, ErrorReporter errorReporter) {
     this.settings = settings;
+    this.apiEndpoints = apiEndpoints;
+    this.errorReporter = errorReporter;
   }
 
   /**
    * Fonction d'authentification à l'API REMOcRA. Cette fonction est appelée avant chaque requête
    *
-   * @return String le token d'identification JWT
+   * @return String le header Authorization complet
    * @throws APIConnectionException Impossible de contacter l'API
    * @throws APIAuthentException Impossible de s'authentifier à l'API
    */
   private String authenticateToRemocra() throws APIConnectionException, APIAuthentException {
+    if (!"keycloak".equalsIgnoreCase(settings.authType())) {
+      logger.warn(
+          "Mode d'authentification API REMOcRA non supporté en v3 only: {}", settings.authType());
+      throwAuthenticationException();
+    }
+    return authenticateToKeycloak();
+  }
+
+  private synchronized String authenticateToKeycloak()
+      throws APIConnectionException, APIAuthentException {
+    long now = System.currentTimeMillis();
+    if (cachedAuthorizationHeader != null
+        && now + TOKEN_EXPIRY_SAFETY_WINDOW_MILLIS < cachedAuthorizationHeaderExpiresAtMillis) {
+      return cachedAuthorizationHeader;
+    }
+
+    validateKeycloakSettings();
+
     URL url;
     HttpURLConnection conn = null;
     try {
-      url = new URL(settings.host() + "/authentication/jwt?email=" + settings.mail());
+      url =
+          new URL(
+              trimTrailingSlash(settings.keycloakUrl())
+                  + "/realms/"
+                  + encodePathSegment(settings.keycloakRealm())
+                  + "/protocol/openid-connect/token");
       conn = (HttpURLConnection) url.openConnection();
-
       conn.setRequestMethod("POST");
       conn.setDoOutput(true);
       conn.setDoInput(true);
-      conn.setRequestProperty("X-password", settings.password());
+      conn.setRequestProperty("Accept", "application/json");
+      conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
 
-      Integer codeRetour = conn.getResponseCode();
-
-      if (codeRetour != null && conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
-        return conn.getHeaderField("Authorization");
-      } else {
-        // Erreur authentification à l'API
-        this.erreurRepository.addError("0200", "Authentification refusée à l'API Remocra", null);
-        throw new APIAuthentException();
+      String formData =
+          "grant_type=client_credentials"
+              + "&client_id="
+              + encode(settings.keycloakClientId())
+              + "&client_secret="
+              + encode(settings.keycloakClientSecret());
+      byte[] out = formData.getBytes(StandardCharsets.UTF_8);
+      conn.setFixedLengthStreamingMode(out.length);
+      conn.connect();
+      try (OutputStream os = conn.getOutputStream()) {
+        os.write(out);
       }
+
+      int codeRetour = conn.getResponseCode();
+      if (codeRetour == HttpURLConnection.HTTP_OK) {
+        Map<?, ?> tokenResponse = mapper.readValue(readStream(conn.getInputStream()), Map.class);
+        Object accessToken = tokenResponse.get("access_token");
+        if (accessToken == null || String.valueOf(accessToken).isEmpty()) {
+          throwAuthenticationException();
+        }
+
+        Number expiresIn =
+            tokenResponse.get("expires_in") instanceof Number
+                ? (Number) tokenResponse.get("expires_in")
+                : Integer.valueOf(300);
+        cachedAuthorizationHeader = "Bearer " + accessToken;
+        cachedAuthorizationHeaderExpiresAtMillis = now + expiresIn.longValue() * 1000L;
+        return cachedAuthorizationHeader;
+      }
+
+      logger.warn("Keycloak authentication refused: {}", readStream(conn.getErrorStream()));
+      throwAuthenticationException();
     } catch (IOException e) {
-      logger.warn("Error  : ", e);
-      // Impossible de contacter l'API
-      this.erreurRepository.addError(
-          "0003", "Impossible d'établir une connexion avec l'API Remocra", null);
-      throw new APIConnectionException();
+      throwConnectionException(e);
     } finally {
       if (conn != null) {
         conn.disconnect();
       }
     }
+    return null;
   }
 
   /**
@@ -89,7 +164,7 @@ public class RequestManager {
     HttpURLConnection conn = null;
     String token = this.authenticateToRemocra();
     try {
-      url = new URL(settings.host() + path);
+      url = new URL(buildUrl(path));
       conn = (HttpURLConnection) url.openConnection();
 
       conn.setRequestMethod(method);
@@ -114,24 +189,15 @@ public class RequestManager {
 
       if (codeRetour == HttpURLConnection.HTTP_OK || codeRetour == HttpURLConnection.HTTP_CREATED) {
         return codeRetour;
+      } else if (codeRetour == HttpURLConnection.HTTP_UNAUTHORIZED) {
+        logAuthenticationFailure(method, path, codeRetour, readStream(conn.getErrorStream()));
+        throwAuthenticationException();
       } else {
-        StringBuilder sb = new StringBuilder();
-        BufferedReader br = new BufferedReader(new InputStreamReader((conn.getErrorStream())));
-        String output;
-        while ((output = br.readLine()) != null) {
-          sb.append(output);
-        }
-        response = sb.toString();
-        br.close();
-
-        String errorCode = (response.split(" ").length > 0) ? response.split(" ")[0] : null;
-
-        // La requête a bien été envoyée mais l'API a retourné une erreur
-        throw new RequestException(conn.getResponseCode(), errorCode, response);
+        response = readStream(conn.getErrorStream());
+        throw buildRequestException(method, path, codeRetour, response, jsonData);
       }
     } catch (IOException e) {
-      logger.warn("Error  : ", e);
-      e.printStackTrace();
+      throwConnectionException(e);
     } finally {
       if (conn != null) {
         conn.disconnect();
@@ -158,20 +224,23 @@ public class RequestManager {
 
       // Si des paramètres sont fournis
       if (parameters != null && parameters.size() > 0) {
-        path = path + "?";
+        path = path + (path.contains("?") ? "&" : "?");
         int nb = 0;
         for (String i : parameters.keySet()) {
+          if (parameters.get(i) == null) {
+            continue;
+          }
           if (nb > 0) {
             path = path + "&";
           }
-          path = path + i + "=" + parameters.get(i).replaceAll(" ", "%20");
+          path = path + encode(i) + "=" + encode(parameters.get(i));
           nb++;
         }
       }
 
       logger.info("Send request to  : " + path);
 
-      url = new URL(settings.host() + path);
+      url = new URL(buildUrl(path));
       conn = (HttpURLConnection) url.openConnection();
 
       conn.setRequestMethod("GET");
@@ -183,32 +252,18 @@ public class RequestManager {
       int codeRetour = conn.getResponseCode();
 
       if (codeRetour == HttpURLConnection.HTTP_OK || codeRetour == HttpURLConnection.HTTP_CREATED) {
-        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-        String inputLine;
-        StringBuffer content = new StringBuffer();
-        while ((inputLine = in.readLine()) != null) {
-          content.append(inputLine);
-        }
-        in.close();
-        logger.debug("get response  : " + content.toString());
-        return content.toString();
+        response = readStream(conn.getInputStream());
+        logger.debug("get response  : " + response);
+        return response;
+      } else if (codeRetour == HttpURLConnection.HTTP_UNAUTHORIZED) {
+        logAuthenticationFailure("GET", path, codeRetour, readStream(conn.getErrorStream()));
+        throwAuthenticationException();
       } else {
-        StringBuilder sb = new StringBuilder();
-        BufferedReader br = new BufferedReader(new InputStreamReader((conn.getErrorStream())));
-        String output;
-        while ((output = br.readLine()) != null) {
-          sb.append(output);
-        }
-        response = sb.toString();
-        br.close();
-
-        String errorCode = (response.split(" ").length > 0) ? response.split(" ")[0] : null;
-        // La requête a bien été envoyée mais l'API a retourné une erreur
-        throw new RequestException(conn.getResponseCode(), errorCode, response);
+        response = readStream(conn.getErrorStream());
+        throw buildRequestException("GET", path, codeRetour, response, null);
       }
     } catch (IOException e) {
-      logger.warn("Error  : ", e);
-      e.printStackTrace();
+      throwConnectionException(e);
     } finally {
       if (conn != null) {
         conn.disconnect();
@@ -220,5 +275,282 @@ public class RequestManager {
   public String sendGetRequest(String path)
       throws APIConnectionException, RequestException, APIAuthentException {
     return this.sendGetRequest(path, null);
+  }
+
+  /**
+   * Construit l'URL absolue à partir de l'hôte, d'un préfixe optionnel et du chemin demandé.
+   *
+   * @param path Chemin relatif de l'endpoint
+   * @return URL absolue prête à être appelée
+   */
+  private String buildUrl(String path) {
+    return trimTrailingSlash(settings.host())
+        + normalizePath(settings.basePath())
+        + normalizePath(path);
+  }
+
+  /**
+   * Normalise un chemin afin qu'il soit vide ou préfixé par un slash.
+   *
+   * @param path Chemin à normaliser
+   * @return Chemin normalisé
+   */
+  private String normalizePath(String path) {
+    if (path == null || path.isEmpty() || "/".equals(path)) {
+      return "";
+    }
+    return path.startsWith("/") ? path : "/" + path;
+  }
+
+  /**
+   * Supprime les slashs terminaux d'une URL ou d'un chemin de base.
+   *
+   * @param value Valeur à nettoyer
+   * @return Valeur sans slash terminal
+   */
+  private String trimTrailingSlash(String value) {
+    if (value == null) {
+      return "";
+    }
+    while (value.endsWith("/")) {
+      value = value.substring(0, value.length() - 1);
+    }
+    return value;
+  }
+
+  /**
+   * Encode une valeur pour l'utiliser dans une query string.
+   *
+   * @param value Valeur à encoder
+   * @return Valeur encodée en UTF-8
+   */
+  private String encode(String value) {
+    try {
+      return URLEncoder.encode(value, StandardCharsets.UTF_8.name()).replace("+", "%20");
+    } catch (IOException e) {
+      throw new IllegalStateException("UTF-8 encoding is not available", e);
+    }
+  }
+
+  /**
+   * Encode un segment de chemin en conservant les slashs déjà présents.
+   *
+   * @param value Valeur à encoder
+   * @return Segment encodé
+   */
+  private String encodePathSegment(String value) {
+    return encode(value).replace("%2F", "/");
+  }
+
+  /**
+   * Lit entièrement un flux HTTP en chaîne UTF-8.
+   *
+   * @param inputStream Flux à lire
+   * @return Contenu du flux, ou chaîne vide si le flux est nul
+   * @throws IOException Erreur de lecture
+   */
+  private String readStream(InputStream inputStream) throws IOException {
+    if (inputStream == null) {
+      return "";
+    }
+    StringBuilder sb = new StringBuilder();
+    try (BufferedReader br =
+        new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+      String output;
+      while ((output = br.readLine()) != null) {
+        sb.append(output);
+      }
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Vérifie que la configuration minimale Keycloak est présente avant d'appeler OIDC.
+   *
+   * @throws APIAuthentException Configuration incomplète
+   */
+  private void validateKeycloakSettings() throws APIAuthentException {
+    if (settings.keycloakUrl().isEmpty()
+        || settings.keycloakRealm().isEmpty()
+        || settings.keycloakClientId().isEmpty()
+        || settings.keycloakClientSecret().isEmpty()) {
+      logger.warn("Configuration Keycloak incomplète pour l'authentification API REMOcRA");
+      throwAuthenticationException();
+    }
+  }
+
+  /**
+   * Remonte l'erreur métier historique d'authentification API avant de lever l'exception.
+   *
+   * @throws APIAuthentException Toujours levée
+   */
+  private void throwAuthenticationException() throws APIAuthentException {
+    reportError(API_AUTHENT_ERROR_CODE, API_AUTHENT_ERROR_MESSAGE, null);
+    throw new APIAuthentException();
+  }
+
+  /**
+   * Remonte une erreur de connexion puis lève l'exception dédiée.
+   *
+   * @param e Cause d'origine
+   * @throws APIConnectionException Toujours levée
+   */
+  private void throwConnectionException(IOException e) throws APIConnectionException {
+    logger.warn("Error  : ", e);
+    reportError(API_CONNECTION_ERROR_CODE, API_CONNECTION_ERROR_MESSAGE, null);
+    throw new APIConnectionException();
+  }
+
+  /**
+   * Journalise un refus d'authentification retourné par l'API métier.
+   *
+   * @param method Méthode HTTP appelée
+   * @param path Chemin relatif appelé
+   * @param statusCode Code HTTP retourné
+   * @param responseBody Corps de réponse éventuel
+   */
+  private void logAuthenticationFailure(
+      String method, String path, int statusCode, String responseBody) {
+    logger.warn(
+        "HTTP {} lors de l'appel {} {}. Reponse: {}",
+        statusCode,
+        method,
+        path,
+        normalizeResponseBody(responseBody));
+  }
+
+  /**
+   * Construit une exception explicite à partir d'un retour HTTP en erreur.
+   *
+   * @param method Méthode HTTP appelée
+   * @param path Chemin relatif appelé
+   * @param statusCode Code HTTP retourné
+   * @param responseBody Corps de réponse d'erreur éventuel
+   * @return Exception métier prête à être propagée
+   */
+  private RequestException buildRequestException(
+      String method, String path, int statusCode, String responseBody, String requestBody) {
+    String normalizedBody = normalizeResponseBody(responseBody);
+    String errorCode = extractErrorCode(normalizedBody);
+    String message = buildHttpErrorMessage(method, path, statusCode, normalizedBody, requestBody);
+    logger.warn(message);
+    return new RequestException(statusCode, errorCode, message);
+  }
+
+  /**
+   * Construit un message d'erreur HTTP homogène et enrichi pour les cas connus côté API métier.
+   *
+   * @param method Méthode HTTP appelée
+   * @param path Chemin relatif appelé
+   * @param statusCode Code HTTP retourné
+   * @param normalizedBody Corps de réponse normalisé
+   * @param requestBody Corps de requête éventuellement transmis
+   * @return Message enrichi prêt à être journalisé
+   */
+  private String buildHttpErrorMessage(
+      String method, String path, int statusCode, String normalizedBody, String requestBody) {
+    String message =
+        String.format(
+            "HTTP %d lors de l'appel %s %s. Reponse: %s", statusCode, method, path, normalizedBody);
+    if (isPibiCaracteristiquesReferentialError(method, path, statusCode, normalizedBody)) {
+      return message + buildPibiCaracteristiquesDiagnostic(requestBody);
+    }
+    return message;
+  }
+
+  /**
+   * Détecte le rejet serveur observé lorsque le référentiel marque/modèle PIBI ne correspond pas.
+   *
+   * @param method Méthode HTTP
+   * @param path Chemin appelé
+   * @param statusCode Code HTTP
+   * @param normalizedBody Réponse normalisée
+   * @return {@code true} si le motif métier connu est détecté
+   */
+  private boolean isPibiCaracteristiquesReferentialError(
+      String method, String path, int statusCode, String normalizedBody) {
+    return statusCode == HttpURLConnection.HTTP_INTERNAL_ERROR
+        && "PUT".equalsIgnoreCase(method)
+        && path != null
+        && path.endsWith("/pibi-caracteristiques")
+        && "Collection contains no element matching the predicate.".equals(normalizedBody);
+  }
+
+  /**
+   * Ajoute un diagnostic ciblé sur le couple marque/modèle transmis au endpoint PIBI.
+   *
+   * @param requestBody Corps de requête JSON envoyé à l'API
+   * @return Complément de message
+   */
+  private String buildPibiCaracteristiquesDiagnostic(String requestBody) {
+    String codeMarque = extractRequestField(requestBody, "codeMarque");
+    String codeModele = extractRequestField(requestBody, "codeModele");
+    return String.format(
+        " Diagnostic: verifier le couple codeMarque/codeModele transmis au referentiel REMOcRA"
+            + " (codeMarque=%s, codeModele=%s).",
+        codeMarque != null ? codeMarque : "<null>", codeModele != null ? codeModele : "<null>");
+  }
+
+  /**
+   * Extrait une propriété textuelle simple d'un corps JSON de requête.
+   *
+   * @param requestBody Corps JSON
+   * @param fieldName Champ recherché
+   * @return Valeur textuelle ou {@code null}
+   */
+  private String extractRequestField(String requestBody, String fieldName) {
+    if (requestBody == null || requestBody.trim().isEmpty()) {
+      return null;
+    }
+    try {
+      return mapper.readTree(requestBody).path(fieldName).asText(null);
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+  /**
+   * Extrait le code d'erreur métier lorsque le corps de réponse commence par un format reconnu.
+   *
+   * @param responseBody Corps de réponse HTTP
+   * @return Code métier ou {@code null}
+   */
+  private String extractErrorCode(String responseBody) {
+    Matcher matcher = ERROR_CODE_PATTERN.matcher(responseBody);
+    return matcher.find() ? matcher.group(1) : null;
+  }
+
+  /**
+   * Nettoie le corps d'erreur pour le rendre plus lisible dans les logs.
+   *
+   * @param responseBody Corps brut
+   * @return Corps nettoyé ou marqueur explicite si vide
+   */
+  private String normalizeResponseBody(String responseBody) {
+    if (responseBody == null) {
+      return "<empty>";
+    }
+    String normalized = responseBody.trim().replaceAll("\\s+", " ");
+    return normalized.isEmpty() ? "<empty>" : normalized;
+  }
+
+  /**
+   * Centralise la remontée d'erreurs pour permettre les tests sans base de données.
+   *
+   * @param codeErreur Code métier d'erreur
+   * @param message Message descriptif
+   * @param idMessage Message métier associé
+   */
+  private void reportError(String codeErreur, String message, Long idMessage) {
+    if (errorReporter != null) {
+      errorReporter.addError(codeErreur, message, idMessage);
+      return;
+    }
+    this.erreurRepository.addError(codeErreur, message, idMessage);
+  }
+
+  @FunctionalInterface
+  interface ErrorReporter {
+    void addError(String codeErreur, String message, Long idMessage);
   }
 }

@@ -29,6 +29,7 @@
     <jts.version>1.18.1</jts.version>
     <javax.mail.version>1.6.2</javax.mail.version>
     <jackson.version>2.12.2</jackson.version>
+    <jacoco.version>0.8.12</jacoco.version>
 
     <spotless.version>2.9.0</spotless.version>
 
@@ -191,6 +192,11 @@
           <groupId>org.flywaydb</groupId>
           <artifactId>flyway-maven-plugin</artifactId>
           <version>${flyway.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <version>${jacoco.version}</version>
         </plugin>
 
         <!-- Formatage du code (ex : check ou apply) -->

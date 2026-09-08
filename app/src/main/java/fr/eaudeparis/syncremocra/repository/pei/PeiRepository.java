@@ -5,14 +5,15 @@ import static fr.eaudeparis.syncremocra.db.model.Tables.VUE_PEI_EDP_REMOCRA;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.eaudeparis.syncremocra.api.ApiEndpoints;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.VuePeiEdpRemocra;
 import fr.eaudeparis.syncremocra.repository.RepositoryUtil;
+import fr.eaudeparis.syncremocra.repository.message.PeiType;
 import fr.eaudeparis.syncremocra.repository.model.SortOrder;
 import fr.eaudeparis.syncremocra.repository.pei.model.VuePeiEdpRemocraFilter;
 import fr.eaudeparis.syncremocra.repository.pei.model.VuePeiEdpRemocraSort;
 import fr.eaudeparis.syncremocra.util.APIAuthentException;
 import fr.eaudeparis.syncremocra.util.APIConnectionException;
-import fr.eaudeparis.syncremocra.util.JSONUtil;
 import fr.eaudeparis.syncremocra.util.RequestException;
 import fr.eaudeparis.syncremocra.util.RequestManager;
 import java.util.ArrayList;
@@ -40,6 +41,8 @@ public class PeiRepository {
   }
 
   @Inject RequestManager requestManager;
+
+  @Inject ApiEndpoints apiEndpoints;
 
   public int count(VuePeiEdpRemocraFilter filters) {
     return context.fetchCount(getSelect().where(getFiltersCondition(filters)).getQuery());
@@ -93,7 +96,7 @@ public class PeiRepository {
    * nature, et par la configuration qui a été réalisée sur REMOcRA
    *
    * @param reference La référence du PEI
-   * @param contexte Le contexte de visite (code du type de saisie)
+   * @param typeVisite Le type de visite REMOcRA
    * @param bloquante Seulement les anomalies bloquantes ou non
    * @return Un arraylist contenant les codes des anomalies qui sont accessibles
    * @throws RequestException Une erreur a été renvoyée par l'API
@@ -103,46 +106,56 @@ public class PeiRepository {
    * @throws APIAuthentException Impossible de s'authentifier sur l'API
    */
   public ArrayList<String> getNaturesAnomaliesAccessibles(
-      String reference, String contexte, boolean bloquante)
+      String reference, String typeVisite, boolean bloquante)
       throws RequestException, JsonProcessingException, APIConnectionException,
           APIAuthentException {
-    String dataPei = this.requestManager.sendGetRequest("/api/deci/pei/" + reference);
+    String dataPei = this.requestManager.sendGetRequest(apiEndpoints.pei(reference));
+    String dataNaturesPibi =
+        this.requestManager.sendGetRequest(
+            apiEndpoints.referentielNaturesPei(PeiType.PIBI.getApiValue()));
+    String dataNaturesPena =
+        this.requestManager.sendGetRequest(
+            apiEndpoints.referentielNaturesPei(PeiType.PENA.getApiValue()));
 
     ObjectMapper mapper = new ObjectMapper();
     TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
     Map<String, Object> data = mapper.readValue(dataPei, typeRef);
+    TypeReference<List<Map<String, Object>>> listTypeRef =
+        new TypeReference<List<Map<String, Object>>>() {};
+    List<Map<String, Object>> pibiNatures = mapper.readValue(dataNaturesPibi, listTypeRef);
+    List<Map<String, Object>> penaNatures = mapper.readValue(dataNaturesPena, listTypeRef);
 
-    String type = null;
-    String nature = JSONUtil.getString(data, "nature");
-    if ("PIBI".equalsIgnoreCase(JSONUtil.getString(data, "type"))) {
-      type = "pibi";
-    } else if ("PENA".equalsIgnoreCase(JSONUtil.getString(data, "type"))) {
-      type = "pena";
+    PeiNatureReference peiReference =
+        PeiNatureReferenceResolver.resolve(data, pibiNatures, penaNatures);
+    if (peiReference == null) {
+      return new ArrayList<String>();
     }
 
     String path =
-        "/api/deci/referentiel/"
-            + type
-            + "/"
-            + nature
-            + "/naturesAnomalies?contexteVisite="
-            + contexte;
+        apiEndpoints.referentielNaturesAnomalies(
+                peiReference.getPeiType().getApiValue(), peiReference.getNatureCode())
+            + "?typeVisite="
+            + typeVisite;
     String dataAnomalies = this.requestManager.sendGetRequest(path);
     ArrayList<String> anomalies = new ArrayList<String>();
 
     TypeReference<ArrayList<Map<String, Object>>> typeRefAnomalies =
         new TypeReference<ArrayList<Map<String, Object>>>() {};
     for (Map<String, Object> anomalie : mapper.readValue(dataAnomalies, typeRefAnomalies)) {
-      String code = JSONUtil.getString(anomalie, "code");
-      Integer valIndispo = JSONUtil.getInteger(anomalie, "valIndispoTerrestre");
+      String code = RemocraAnomalieMapper.getCode(anomalie);
+      boolean bloquanteAnomalie = RemocraAnomalieMapper.isBloquante(anomalie);
+      boolean supportsTypeVisite = RemocraAnomalieMapper.supportsTypeVisite(anomalie, typeVisite);
       // Si le paramatetre bloquante et a true
       // on ne renvoi que les anomalies BLOQUANTE (valindispo ==5)
       if ((code != null && code.length() > 0 && !anomalies.contains(code))
           && bloquante
-          && Integer.valueOf(5).equals(valIndispo)) {
+          && bloquanteAnomalie
+          && supportsTypeVisite) {
         anomalies.add(code);
         // Sinon on renvois TOUT les anomalies accessible pour tel contexte de visite
-      } else if ((code != null && code.length() > 0 && !anomalies.contains(code)) && !bloquante) {
+      } else if ((code != null && code.length() > 0 && !anomalies.contains(code))
+          && !bloquante
+          && supportsTypeVisite) {
         anomalies.add(code);
       }
     }

@@ -19,3 +19,14 @@ include::include/historique.adoc[]
 * link:Manuel%20installation.html[Manuel d'installation]
 * link:Manuel%20mise%20a%20jour.html[Manuel de mise à jour]
 * link:Manuel%20exploitation.html[Manuel d'exploitation]
+* link:conception/regles-metier.html[Conception - vue d'ensemble]
+* link:conception/visites-v3.html[Conception - traitement des visites REMOcRA V3]
+* link:conception/pushworker/caracteristiques-v3.html[Conception - caractéristiques REMOcRA V3]
+* link:conception/pushworker/traitement-messages.html[Conception - traitement des messages du push-worker]
+
+== REMOcRA V3
+
+Les adaptations techniques REMOcRA V3, la configuration OAuth2/Keycloak, le traitement des visites
+`NP` et `CTP`, les indisponibilités temporaires et la procédure de diagnostic sont documentés dans
+le link:Manuel%20exploitation.html[Manuel d'exploitation]. Les étapes de déploiement homogène des
+jobs sont décrites dans le link:Manuel%20mise%20a%20jour.html[Manuel de mise à jour].

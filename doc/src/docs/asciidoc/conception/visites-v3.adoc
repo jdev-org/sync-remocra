@@ -1,0 +1,446 @@
+= Conception - Traitement des visites REMOcRA V3
+Eau de Paris - Synchronisation Remocra
+v${project.version}, ${timestamp}
+
+:toc:
+:toclevels: 3
+
+* link:../index.html[Accueil]
+* link:regles-metier.html[Conception - vue d'ensemble]
+* link:pushworker/caracteristiques-v3.html[Conception - caractéristiques REMOcRA V3]
+* link:pushworker/traitement-messages.html[Conception - traitement des messages du push-worker]
+
+== Objet et périmètre
+
+Ce document décrit le comportement *actuellement implémenté* par le push-worker pour les visites.
+Il ne remplace pas le référentiel métier REMOcRA. Une absence de point d'attention dans un payload
+décrit ci-dessous signifie que Sync-remocra ne l'ajoute pas directement à partir de ce libellé.
+
+Le point de départ est le champ `type_derniere_visite` de `VUE_PEI_EDP_REMOCRA`, stocké dans
+`edp.tracabilite_pei` par le changedatacapture.
+
+== Enchaînement commun d'une visite
+
+Pour un message `SPECIFIQUE` ou `MANUELLE`, le push-worker suit cet enchaînement :
+
+. Lit la traçabilité du PEI et son `type_derniere_visite`.
+. Interroge REMOcRA afin de connaître le type et la nature du PEI, puis les anomalies accessibles :
+  `GET /deci/pei/{reference}`, `GET /deci/referentiel/pibi/naturesPEI`,
+  `GET /deci/referentiel/pena/naturesPEI` et
+  `GET /deci/referentiel/{type}/{nature}/naturesAnomalies?typeVisite={NP|CTP}`.
+. Construit le payload ci-dessous.
+. Appelle `POST /deci/pei/{reference}/visites`.
+
+Le payload réellement envoyé à l'API ne contient pas `contexte`. Ce champ historique est ajouté
+uniquement à la copie locale enregistrée dans `edp.message.json` : `CTRL` pour `CTP` et `NP` pour
+`NP`.
+
+== Paramètres possibles du payload de visite
+
+|===
+|Paramètre |Origine et comportement
+
+|`typeVisite`
+|`NP` ou `CTP` uniquement. `CDP` n'est jamais envoyé à l'API V3.
+
+|`date`
+|Format `yyyy-MM-dd HH:mm`. Pour un message `SPECIFIQUE`, valeur de `date_derniere_visite`.
+Pour une visite `MANUELLE`, valeur de `date_essai`. Un `NPQP` traité comme visite manuelle conserve
+`date_derniere_visite` lorsqu'il provient d'un message `SPECIFIQUE`.
+
+|`agent1`
+|Toujours `Eau de Paris`.
+
+|`pression`, `pressionDynamique`, `debit`
+|Ajoutés pour une visite `PIQP` et une visite manuelle lorsqu'au moins une mesure est présente.
+Lorsque ce bloc est ajouté, les trois clés sont présentes ; une mesure source absente est envoyée à
+`null`.
+
+|`anomaliesConstatees`
+|Anomalies constatées par la visite.
+
+|`anomaliesControlees`
+|Anomalies contrôlées par la visite.
+|===
+
+== Règles communes sur les anomalies
+
+Les règles suivantes s'appliquent à tous les préfixes de visite :
+
+* un libellé contenant `CONTROLE REALISE` ou `EN SERVICE` envoie toutes les anomalies accessibles
+  dans `anomaliesControlees` et un tableau `anomaliesConstatees` vide ;
+* un libellé contenant `TRAVAUX` ou `RENOUVELER` ajoute `BSPP_APDP` dans les deux tableaux ;
+* un libellé contenant `SANS EAU` ajoute `BSPP_APSE` dans les deux tableaux ;
+* un libellé contenant `PB SIGNALETIQUE` ajoute `BSPP_PISD` et/ou `BSPP_BISD` seulement si ces
+  codes sont accessibles pour le PEI et le type de visite ;
+* tout autre libellé envoie les deux tableaux vides.
+
+Le statut disponible ou indisponible du PEI ne modifie pas ce premier payload de visite. Le flux
+séparé `INDISPO_TEMPORAIRE`, décrit plus loin, peut toutefois créer une seconde visite NP.
+
+== Visites de type NP
+
+Les types dont le libellé commence par `NP` produisent un message `SPECIFIQUE` lorsque
+`date_maj_np` est modifiée. Le payload de base est :
+
+[source,json]
+----
+{
+  "typeVisite": "NP",
+  "date": "date_derniere_visite",
+  "agent1": "Eau de Paris",
+  "anomaliesConstatees": [],
+  "anomaliesControlees": []
+}
+----
+
+=== NP - BOUCHE INCENDIE A RENOUVELER
+
+Le libellé contient `RENOUVELER`. Le payload NP ajoute `BSPP_APDP` dans `anomaliesConstatees` et
+`anomaliesControlees`.
+
+=== NP - BOUCHE INCENDIE APPAREIL DÉTERIORÉ
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE ASTREINTE
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE CONTROLE DE NUIT
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE DEPOSE OU EN TRAVAUX
+
+Le libellé contient `TRAVAUX`. Le payload NP ajoute `BSPP_APDP` dans les deux tableaux.
+
+=== NP - BOUCHE INCENDIE EN SERVICE
+
+Le payload NP ajoute toutes les anomalies accessibles dans `anomaliesControlees`. Aucune anomalie
+n'est placée dans `anomaliesConstatees`.
+
+=== NP - BOUCHE INCENDIE EN SERVICE SUITE CHG PIE
+
+Le payload NP ajoute toutes les anomalies accessibles dans `anomaliesControlees`. Aucune anomalie
+n'est placée dans `anomaliesConstatees`.
+
+=== NP - BOUCHE INCENDIE ENCOMBRE OU INACCESSIBLE
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE FUITE BAC
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE FUITE SUR PISSETTE
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE FUITE TERRE/FOURREAU/EGO
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE HORS SERVICE
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE PB DEBIT/PRESSION
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE PIECES A CHANGER
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE PRESSION INSUFFISANTE
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE PUISAGE SUR APPAREIL
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE RV PRISE HS
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - BOUCHE INCENDIE SITUATION A REVOIR
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - POINT EAU INCENDIE CONTROLE REALISE
+
+Le payload NP ajoute toutes les anomalies accessibles dans `anomaliesControlees`. Aucune anomalie
+n'est placée dans `anomaliesConstatees`.
+
+=== NP - POINT EAU INCENDIE PB DEBIT/PRESSION
+
+Le payload NP conserve les deux tableaux d'anomalies vides.
+
+=== NP - POINT EAU INCENDIE PB SIGNALETIQUE
+
+Le payload NP ajoute `BSPP_PISD` et/ou `BSPP_BISD` dans les deux tableaux, selon les anomalies
+accessibles retournées par REMOcRA.
+
+== Visites de type PICF
+
+Les types dont le libellé commence par `PICF` produisent un message `SPECIFIQUE` lorsque
+`date_maj_cf` est modifiée. Sync-remocra les convertit en `typeVisite: CTP`. Le payload de base est :
+
+[source,json]
+----
+{
+  "typeVisite": "CTP",
+  "date": "date_derniere_visite",
+  "agent1": "Eau de Paris",
+  "anomaliesConstatees": [],
+  "anomaliesControlees": []
+}
+----
+
+=== PICF - POINT EAU INCENDIE APPAREIL DÉTERIORÉ
+
+Le payload CTP conserve les deux tableaux d'anomalies vides.
+
+=== PICF - POINT EAU INCENDIE CONTROLE FONCTIONNEL
+
+Le payload CTP conserve les deux tableaux d'anomalies vides.
+
+=== PICF - POINT EAU INCENDIE CONTROLE REALISE
+
+Le payload CTP ajoute toutes les anomalies accessibles dans `anomaliesControlees`. Aucune anomalie
+n'est placée dans `anomaliesConstatees`.
+
+=== PICF - POINT EAU INCENDIE COUVERCLE MANQU/DETERIOR
+
+Le payload CTP conserve les deux tableaux d'anomalies vides.
+
+=== PICF - POINT EAU INCENDIE DEGORGER COFFRE/COLONNE
+
+Le payload CTP conserve les deux tableaux d'anomalies vides.
+
+=== PICF - POINT EAU INCENDIE DEPOSE OU EN TRAVAUX
+
+Le libellé contient `TRAVAUX`. Le payload CTP ajoute `BSPP_APDP` dans les deux tableaux.
+
+=== PICF - POINT EAU INCENDIE DIFFICILE A MANŒUVRER
+
+Le payload CTP conserve les deux tableaux d'anomalies vides.
+
+=== PICF - POINT EAU INCENDIE EN ECOULEMENT
+
+Le payload CTP conserve les deux tableaux d'anomalies vides.
+
+=== PICF - POINT EAU INCENDIE EN SERVICE
+
+Le payload CTP ajoute toutes les anomalies accessibles dans `anomaliesControlees`. Aucune anomalie
+n'est placée dans `anomaliesConstatees`.
+
+=== PICF - POINT EAU INCENDIE ENCOMBRE OU INACCESSIBLE
+
+Le payload CTP conserve les deux tableaux d'anomalies vides.
+
+=== PICF - POINT EAU INCENDIE PB DEBIT/PRESSION
+
+Le payload CTP conserve les deux tableaux d'anomalies vides.
+
+=== PICF - POINT EAU INCENDIE PB SIGNALETIQUE
+
+Le payload CTP ajoute `BSPP_PISD` et/ou `BSPP_BISD` dans les deux tableaux, selon les anomalies
+accessibles retournées par REMOcRA.
+
+=== PICF - POINT EAU INCENDIE SANS EAU
+
+Le libellé contient `SANS EAU`. Le payload CTP ajoute `BSPP_APSE` dans les deux tableaux.
+
+== Visites de type PIQP
+
+Les types dont le libellé commence par `PIQP` produisent un message `SPECIFIQUE` lorsque
+`date_maj_qp` est modifiée. Sync-remocra les convertit en `typeVisite: CTP` et ajoute les mesures
+lorsqu'au moins une valeur est présente. Le payload de base est :
+
+[source,json]
+----
+{
+  "typeVisite": "CTP",
+  "date": "date_derniere_visite",
+  "agent1": "Eau de Paris",
+  "pression": "essai_pression_statique ou null",
+  "pressionDynamique": "essai_pression_dynamique ou null",
+  "debit": "essai_debit ou null",
+  "anomaliesConstatees": [],
+  "anomaliesControlees": []
+}
+----
+
+Les trois clés de mesure ne sont absentes que si les trois valeurs source sont absentes.
+
+=== PIQP - POINT EAU INCENDIE APPAREIL DÉTERIORÉ
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+
+=== PIQP - POINT EAU INCENDIE CONTROLE Q/P
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+
+=== PIQP - POINT EAU INCENDIE CONTROLE REALISE
+
+Le payload CTP avec mesures éventuelles ajoute toutes les anomalies accessibles dans
+`anomaliesControlees`. Aucune anomalie n'est placée dans `anomaliesConstatees`.
+
+=== PIQP - POINT EAU INCENDIE COUVERCLE MANQU/DETERIOR
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+
+=== PIQP - POINT EAU INCENDIE DEGORGER COFFRE/COLONNE
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+
+=== PIQP - POINT EAU INCENDIE DEPOSE OU EN TRAVAUX
+
+Le libellé contient `TRAVAUX`. Le payload CTP avec mesures éventuelles ajoute `BSPP_APDP` dans les
+deux tableaux.
+
+=== PIQP - POINT EAU INCENDIE DIFFICILE A MANŒUVRER
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+
+=== PIQP - POINT EAU INCENDIE EN ECOULEMENT
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+
+=== PIQP - POINT EAU INCENDIE ENCOMBRE OU INACCESSIBLE
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+
+=== PIQP - POINT EAU INCENDIE FUITE BAC
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+
+=== PIQP - POINT EAU INCENDIE PB DEBIT/PRESSION
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+
+=== PIQP - POINT EAU INCENDIE PB SIGNALETIQUE
+
+Le payload CTP avec mesures éventuelles ajoute `BSPP_PISD` et/ou `BSPP_BISD` dans les deux tableaux,
+selon les anomalies accessibles retournées par REMOcRA.
+
+=== PIQP - POINT EAU INCENDIE PEI INTROUVABLE
+
+Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides. Le code ne
+détecte pas `INTROUVABLE` et n'ajoute donc pas `BSPP_INTR` directement.
+
+=== PIQP - POINT EAU INCENDIE SANS EAU
+
+Le libellé contient `SANS EAU`. Le payload CTP avec mesures éventuelles ajoute `BSPP_APSE` dans les
+deux tableaux.
+
+== Visites de type NPQP
+
+Un libellé commençant par `NPQP` reçu dans un message `SPECIFIQUE` est traité comme une visite
+manuelle : `typeVisite: NP`, mesures ajoutées si disponibles, et `date` égale à
+`date_derniere_visite`. Les règles communes d'anomalies s'appliquent au libellé complet.
+
+== Visites manuelles
+
+Un message `MANUELLE`, créé à partir de `date_maj_mj`, appelle le même endpoint de visite avec :
+
+[source,json]
+----
+{
+  "typeVisite": "NP",
+  "date": "date_essai",
+  "agent1": "Eau de Paris",
+  "pression": "essai_pression_statique ou null si le bloc de mesures est ajoute",
+  "pressionDynamique": "essai_pression_dynamique ou null si le bloc de mesures est ajoute",
+  "debit": "essai_debit ou null si le bloc de mesures est ajoute",
+  "anomaliesConstatees": "selon le type_derniere_visite",
+  "anomaliesControlees": "selon le type_derniere_visite"
+}
+----
+
+Les règles communes d'anomalies s'appliquent au `type_derniere_visite` de la traçabilité, même si
+le message est de type `MANUELLE`.
+
+== Type de visite non reconnu
+
+Si `type_derniere_visite` ne commence ni par `NP`, ni par `PICF`, `PIQP`, `CTRL` ou `CTP`, le
+push-worker lève l'erreur interne `2001`. Aucun appel `POST /deci/pei/{reference}/visites` n'est
+effectué.
+
+== Flux distinct d'indisponibilité temporaire
+
+Lorsque `date_maj_e` est modifiée, le changedatacapture crée un message `INDISPO_TEMPORAIRE`. Ce
+flux est indépendant de la visite décrite dans les sections précédentes.
+
+=== PEI indisponible
+
+. Sync-remocra interroge `GET /deci/indispoTemporaire?organismeApi=EAU_DE_PARIS`.
+. Si un motif contient `ARRET EAU` ou `RENOUVEL` et qu'aucune indisponibilité EDP n'est active,
+  il appelle `POST /deci/indispoTemporaire` avec le motif générique, `dateDebut`, les bascules
+  automatiques et `listeNumeroPei`.
+. Si les motifs EDP actifs diffèrent des motifs mémorisés, Sync-remocra peut appeler une seconde fois
+  `POST /deci/pei/{reference}/visites` avec `typeVisite: NP`. Les motifs présents sont placés dans
+  `anomaliesConstatees` et `anomaliesControlees` après conversion par `referentiel_anomalies` ; les
+  motifs retirés sont placés seulement dans `anomaliesControlees`.
+. Une modification portant uniquement sur `ARRET EAU` ne crée pas cette seconde visite.
+
+=== Correspondance des motifs d'indisponibilité EDP
+
+Le changedatacapture lit les motifs actifs dans `VUE_PEI_MOTIF_INDISPO_EDP_REMOCRA` et les
+convertit par la table locale `edp.referentiel_anomalies`. Les motifs sont mis en majuscules avant
+la recherche, mais le rapprochement reste exact : les accents, espaces et termes complémentaires
+doivent correspondre à la valeur exposée par la vue.
+
+|===
+|Motif EDP |Point d'attention REMOcRA |Traitement additionnel
+
+|`APP A RENOUVELER`
+|`BSPP_APDP` - Déposé ou en travaux
+|Création d'une IT et visite NP de motifs.
+
+|`APP A REPARER`
+|`BSPP_APDP` - Déposé ou en travaux
+|Visite NP de motifs.
+
+|`APP SANS EAU`, `APP SIGNALE`, `FERME DEMANDE TIERS`, `SANS CONDUITE`, `PUISAGE`,
+`FERMETURE HIVERNALE`, `FERME DEMANDE SSQ`, `APP PROJET`
+|`BSPP_APSE` - Sans eau
+|Visite NP de motifs.
+
+|`ARRET EAU`
+|`BSPP_APSE` - Sans eau
+|Création d'une IT. Si c'est le seul motif ajouté ou retiré, aucune visite NP de motifs n'est envoyée.
+
+|`APP SUR CHANTIER`
+|`BSPP_APEN` - Inaccessible : dans emprise de chantier
+|Visite NP de motifs.
+
+|`INACCESSIBLE`
+|`BSPP_INTE` - Inaccessible : sous une terrasse (resto, café, ...)
+|Visite NP de motifs.
+
+|`STREETPOOLING`
+|`STRTPOOL` - Street pooling (indisponible, PEI fermé)
+|Visite NP de motifs.
+|===
+
+Les valeurs `BSPP_*` doivent être configurées comme anomalies accessibles pour le type de PEI et
+la visite NP dans REMOcRA. Le push-worker ne transmet pas directement l'état `Indispo` : REMOcRA
+le détermine à partir de l'IT et du caractère bloquant de ces points d'attention.
+
+=== PEI disponible
+
+. Sync-remocra interroge `GET /deci/indispoTemporaire?organismeApi=EAU_DE_PARIS`.
+. Si une indisponibilité temporaire EDP est active, il appelle
+  `PUT /deci/indispoTemporaire/{id}` avec `dateFin`.
+. Si des motifs EDP sont mémorisés, il peut appeler une seconde fois
+  `POST /deci/pei/{reference}/visites` avec `typeVisite: NP`, un tableau
+  `anomaliesConstatees` vide et les codes mappés dans `anomaliesControlees`.
+. Un motif mémorisé `ARRET EAU` seul ne crée pas cette seconde visite.
+
+Les visites directes et les visites générées par ce flux utilisent une date à la minute. Lorsqu'elles
+ont la même date et heure, REMOcRA peut répondre par l'erreur `2118` indiquant qu'une visite existe
+déjà.
