@@ -1086,68 +1086,20 @@ public class MessageRepository {
             ? traca.getTypeDerniereVisite().toUpperCase()
             : null;
 
-    ObjectMapper mapper = new ObjectMapper();
-    ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();
-    ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
     ArrayList<String> toutesAnomalies =
         this.peiRepository.getNaturesAnomaliesAccessibles(
             traca.getReference(), v.get("typeVisite").textValue(), false);
+    VisitAnomalyMapper.VisitAnomalies anomalies =
+        VisitAnomalyMapper.map(typeDerniereVisite, toutesAnomalies);
 
-    if (typeDerniereVisite != null) {
-      // Aucune anomalie
-      if (shouldClearAllAnomalies(typeDerniereVisite)) {
-        for (String code : toutesAnomalies) {
-          arrayAnomaliesControlees.add(code);
-        }
-        v.set("anomaliesControlees", arrayAnomaliesControlees);
-        v.set("anomaliesConstatees", arrayAnomaliesConstatees);
-        return v;
-      }
-
-      // Déposé ou en travaux
-
-      if (typeDerniereVisite.contains("TRAVAUX") || typeDerniereVisite.contains("RENOUVELER")) {
-        arrayAnomaliesConstatees = this.addAnomalie(arrayAnomaliesConstatees, "BSPP_APDP");
-        arrayAnomaliesControlees = this.addAnomalie(arrayAnomaliesControlees, "BSPP_APDP");
-      }
-
-      // Sans eaux
-      if (typeDerniereVisite.contains("SANS EAU")) {
-        arrayAnomaliesConstatees = this.addAnomalie(arrayAnomaliesConstatees, "BSPP_APSE");
-        arrayAnomaliesControlees = this.addAnomalie(arrayAnomaliesControlees, "BSPP_APSE");
-      }
-
-      // Signalisation dégradée (BI), Identification dégradée (PI)
-      if (typeDerniereVisite.contains("PB SIGNALETIQUE")) {
-        if (toutesAnomalies.contains("BSPP_PISD")) {
-          arrayAnomaliesConstatees = this.addAnomalie(arrayAnomaliesConstatees, "BSPP_PISD");
-          arrayAnomaliesControlees = this.addAnomalie(arrayAnomaliesControlees, "BSPP_PISD");
-        }
-
-        if (toutesAnomalies.contains("BSPP_BISD")) {
-          arrayAnomaliesConstatees = this.addAnomalie(arrayAnomaliesConstatees, "BSPP_BISD");
-          arrayAnomaliesControlees = this.addAnomalie(arrayAnomaliesControlees, "BSPP_BISD");
-        }
-      }
-    }
-
+    ObjectMapper mapper = new ObjectMapper();
+    ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();
+    ArrayNode arrayAnomaliesConstatees = mapper.createArrayNode();
+    anomalies.getAnomaliesControlees().forEach(arrayAnomaliesControlees::add);
+    anomalies.getAnomaliesConstatees().forEach(arrayAnomaliesConstatees::add);
     v.set("anomaliesControlees", arrayAnomaliesControlees);
     v.set("anomaliesConstatees", arrayAnomaliesConstatees);
     return v;
-  }
-
-  /**
-   * Ajoute une anomalie dans un tableau JSON Si l'anomalie est déjà présente, elle n'est pas
-   * ajoutée afin d'éviter les doublons
-   *
-   * @param an Le tableau JSON
-   * @param anomalie L'anomalie à ajouter
-   */
-  public ArrayNode addAnomalie(ArrayNode an, String anomalie) {
-    if (an.findValue(anomalie) == null) {
-      return an.add(anomalie);
-    }
-    return an;
   }
 
   /**

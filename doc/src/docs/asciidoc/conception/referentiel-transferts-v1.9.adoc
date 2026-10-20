@@ -492,3 +492,17 @@ Chaque évolution future devra respecter la séquence suivante :
 Les règles existantes qui ne sont pas listées dans le classeur V1.9 seront inventoriées après la
 mise en oeuvre de toutes les lignes cibles. Elles ne doivent pas être supprimées ni modifiées sans
 une décision métier explicite.
+
+== Couverture des codes validés
+
+Les tests unitaires `VisitAnomalyMapperTest` couvrent les seuls codes de visite actuellement
+validés par le référentiel : `BSPP_APDP`, `BSPP_APSE`, `BSPP_BISD` et `BSPP_PISD`, ainsi que les
+levées associées à `CONTROLE REALISE` et `EN SERVICE`.
+
+Les tests `ReferentielAnomaliesMigrationTest` contrôlent toutes les correspondances de motifs
+d'indisponibilité livrées dans les migrations : `BSPP_APDP`, `BSPP_APSE`, `BSPP_APEN`,
+`BSPP_INTE` et `STRTPOOL`.
+
+Les actions sans code BSPP validé restent explicitement non mappées ; le test
+`shouldLeaveActionsWithoutValidatedCodeUnmapped` évite qu'un code provisoire soit transmis par
+erreur.
