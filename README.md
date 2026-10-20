@@ -23,6 +23,15 @@ Elles sont démarrées via des conteneurs :
 
 Voir le fichier [docker/README.md](docker/README.md) pour plus de détails.
 
+### Prérequis de développement
+
+Les commandes Maven et l'IDE doivent utiliser un JDK 21. Vérifier l'environnement local avec :
+
+```sh
+java -version
+mvn -version
+```
+
 
 ### Exécution de l'application
 
@@ -43,7 +52,7 @@ docker run --network="host" --rm \
   -v ~/.m2:/var/maven/.m2 -v "${HOME}":/var/maven \
   -e HOME=/var/maven -e MAVEN_CONFIG=/var/maven/.m2 -e MAVEN_OPTS="-Duser.home=/var/maven" \
   \
-  maven:3-jdk-11 \
+  maven:3-eclipse-temurin-21 \
   \
   mvn clean compile exec:java
 ```
@@ -157,13 +166,7 @@ Cf. [pdi/README.md](pdi/README.md).
 
 ## Intégration continue
 
-Les pipelines sont décrits dans le fichier [jenkins/README.md](jenkins/README.md).
-
-
-
-## Validation dans une box Vagrant
-
-Pour tester l'application dans une box Vagrant, se référer au fichier [vagrant/README.md](vagrant/README.md).
+L'integration continue est executee par les workflows GitHub Actions presents dans le repertoire [.github/workflows](.github/workflows).
 
 
 

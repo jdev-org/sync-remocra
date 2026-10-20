@@ -1,0 +1,163 @@
+= Conception - Détection des visites par le changedatacapture
+Eau de Paris - Synchronisation Remocra
+v${project.version}, ${timestamp}
+
+:toc:
+:toclevels: 3
+
+* link:../../index.html[Accueil]
+* link:../regles-metier.html[Conception - vue d'ensemble]
+* link:../referentiel-transferts-v1.9.html[Conception - référentiel cible des transferts V1.9]
+* link:../visites-v3.html[Conception - traitement des visites REMOcRA V3]
+* link:../pushworker/traitement-messages.html[Conception - traitement des messages du push-worker]
+
+== Objet et périmètre
+
+Cette page décrit la détection des modifications de visites dans les vues Oracle et la création des
+messages locaux par le job `changedatacapture`. Elle décrit le comportement implémenté, pas les
+règles métier cibles encore en attente de codes ATOL/BSPP.
+
+Le changedatacapture ne construit aucun payload REMOcRA et ne traduit aucun libellé d'action de
+clôture. Il copie l'état de la vue dans `edp.tracabilite_pei`, puis crée des messages dans
+`edp.message`. Le push-worker effectue ensuite la transformation et l'appel API.
+
+== Curseur de lecture
+
+Le job lit la valeur `DERNIERE_REMONTEE_CHANGE_DATA_CAPTURE` dans `edp.parametres`. Il interroge
+`VUE_PEI_EDP_REMOCRA` pour les PEI dont au moins une date de mise à jour est postérieure à ce
+curseur, puis l'enregistre dans la traçabilité.
+
+Les dates détectées doivent être stables et strictement croissantes. Une mise à jour de vue qui
+modifie massivement une date de suivi peut donc créer un volume important de messages.
+
+== Création des messages de visite
+
+|===
+|Date de la vue |Type `edp.message` |Déclencheur |Traitement ultérieur
+
+|`date_maj_qp`
+|`SPECIFIQUE`
+|`date_maj_qp`
+|Visite issue de `PIQP`, envoyée en `CTP` par le push-worker.
+
+|`date_maj_cf`
+|`SPECIFIQUE`
+|`date_maj_cf`
+|Visite issue de `PICF`, envoyée en `CTP` par le push-worker.
+
+|`date_maj_np`
+|`SPECIFIQUE`
+|`date_maj_np`
+|Visite issue d'un type local `NP`, envoyée en `NP` par le push-worker.
+
+|`date_maj_mj`
+|`MANUELLE`
+|`date_maj_mj`
+|Visite `NP` avec mesures débit/pression, quelle que soit leur application source, SmartMobility ou
+WatGIS.
+
+|`date_maj_e`
+|`INDISPO_TEMPORAIRE`
+|`date_maj_e`
+|Flux distinct d'indisponibilité temporaire ; il peut aussi créer une visite NP de motifs.
+|===
+
+`date_maj_p` produit un message `CARACTERISTIQUES` pour les modifications patrimoniales. Il ne crée
+pas de visite.
+
+== Données tracées
+
+Pour chaque ligne retenue, le changedatacapture mémorise notamment dans `edp.tracabilite_pei` :
+
+* la référence du PEI, son état et les dates `date_maj_*` ;
+* `date_derniere_visite` et `type_derniere_visite` ;
+* les valeurs d'essai débit/pression et leurs dates ;
+* les données patrimoniales utilisées par le flux `CARACTERISTIQUES`.
+
+Les motifs d'indisponibilité actifs de `VUE_PEI_MOTIF_INDISPO_EDP_REMOCRA` sont mémorisés dans
+`edp.tracabilite_indispo`, avec `date_debut` et `date_fin_prevue`. Dans l'implémentation actuelle,
+ces deux dernières dates ne sont pas utilisées par le push-worker pour construire l'IT REMOcRA :
+il utilise `date_maj_e` pour la création et la clôture.
+
+== Relation avec le référentiel de transferts
+
+La version de référence est décrite ligne par ligne dans
+link:../referentiel-transferts-v1.9.html[le référentiel cible V1.9]. Cette page conserve la
+description des mécanismes techniques de détection.
+
+Le référentiel métier doit définir ce que chaque action de clôture devient dans REMOcRA. Pour que
+la passerelle puisse l'implémenter, les vues doivent fournir :
+
+* le bon déclencheur `date_maj_qp`, `date_maj_cf`, `date_maj_np` ou `date_maj_mj` ;
+* une valeur `type_derniere_visite` permettant d'identifier sans ambiguïté le type local et
+  l'action de clôture ;
+* les mesures d'essai lorsque leur transmission est attendue ;
+* tout champ supplémentaire validé, par exemple un commentaire ou une date d'IT.
+
+Le changedatacapture ne déduit pas un type `NP` ou `CTP` à partir du libellé. Si une action doit
+aboutir à `NP`, la vue doit actuellement fournir un type local commençant par `NP`, sauf évolution
+explicite de la passerelle.
+
+== Limites et risques connus
+
+=== Plusieurs messages pour une même modification métier
+
+La fonction crée un message indépendant pour chaque date `date_maj_*` modifiée. Lorsqu'un même
+événement modifie à la fois `date_maj_e` et `date_maj_np`, elle crée donc un message
+`INDISPO_TEMPORAIRE` et un message `SPECIFIQUE`.
+
+Le premier flux peut créer une visite NP de motifs et le second crée une visite spécifique. Si les
+deux visites sont datées à la même minute, REMOcRA peut rejeter la seconde avec l'erreur `2118`.
+La règle de dédoublonnage ou de priorité doit être corrigée avant de généraliser les nouveaux cas
+métier.
+
+=== Curseur incomplet en présence de plusieurs dates
+
+La fonction actuelle calcule le nouveau curseur avec une chaîne de `IF` / `ELSIF`. Lorsque
+`date_maj_e` et `date_maj_np` changent sur un même PEI, la première date rencontrée peut être
+retenue sans comparer les suivantes. Le cycle suivant peut alors relire une date plus récente et
+recréer un message de visite.
+
+Le calcul doit retenir le maximum de toutes les dates réellement lues par le cycle.
+
+=== Indisponibilités temporaires avec dates source
+
+La ligne IT du référentiel cible nécessite une définition complémentaire : déclencheur, champ
+source de début, champ source de fin et distinction entre une fin prévisionnelle et une clôture
+effective. Sans ces éléments, une modification isolée de `date_fin_prevue` ne peut pas être
+détectée ni transmise par le flux actuel.
+
+La feuille `CIBLE - Transferts liés à AE` V1.9 précise désormais la cible : une création d'arrêt
+d'eau doit utiliser `date_maj_e` comme début d'IT et `date_fin_prevue` comme fin, tandis qu'une
+modification isolée de `date_fin_prevue` doit être détectée grâce à un futur `date_maj_ae`. Cette
+date n'est pas présente dans le modèle actuel : une évolution de vue, de traçabilité et du
+changedatacapture est nécessaire avant l'implémentation de cette ligne.
+
+== Diagnostic
+
+Pour analyser les messages produits par un PEI :
+
+[source,sql]
+----
+select
+  m.id,
+  m.type,
+  m.declencheur,
+  m.date,
+  m.statut,
+  m.synchronisations,
+  m.synchroniser,
+  m.erreur,
+  t.id as id_traca_pei,
+  t.date_traca,
+  t.date_maj_e,
+  t.date_maj_qp,
+  t.date_maj_cf,
+  t.date_maj_np,
+  t.date_maj_mj,
+  t.type_derniere_visite
+from edp.message m
+join edp.tracabilite_pei t on t.id = m.id_traca_pei
+where t.reference = '<reference_pei>'
+order by m.date, m.id;
+----

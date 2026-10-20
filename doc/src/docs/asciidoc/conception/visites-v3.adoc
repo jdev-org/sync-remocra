@@ -7,6 +7,8 @@ v${project.version}, ${timestamp}
 
 * link:../index.html[Accueil]
 * link:regles-metier.html[Conception - vue d'ensemble]
+* link:referentiel-transferts-v1.9.html[Conception - référentiel cible des transferts V1.9]
+* link:changedatacapture/visites.html[Conception - détection des visites par le changedatacapture]
 * link:pushworker/caracteristiques-v3.html[Conception - caractéristiques REMOcRA V3]
 * link:pushworker/traitement-messages.html[Conception - traitement des messages du push-worker]
 
@@ -18,6 +20,28 @@ décrit ci-dessous signifie que Sync-remocra ne l'ajoute pas directement à part
 
 Le point de départ est le champ `type_derniere_visite` de `VUE_PEI_EDP_REMOCRA`, stocké dans
 `edp.tracabilite_pei` par le changedatacapture.
+
+La détection des dates source, la création des messages `SPECIFIQUE` et `MANUELLE`, ainsi que les
+risques de doublon entre visite et indisponibilité temporaire sont décrits dans
+link:changedatacapture/visites.html[la conception du changedatacapture].
+
+== État du référentiel cible
+
+Le référentiel de transferts cible définit le résultat attendu dans REMOcRA. Cette page documente
+le comportement déjà implémenté dans Sync-remocra. Les libellés d'action non couverts par les
+règles ci-dessous ne sont pas transformés en anomalies, même si le référentiel leur associe un
+point d'attention cible.
+
+La traçabilité exhaustive du référentiel `Referentiel_Transferts__EDP-BSPP_V1.9.xlsx`, y compris
+les écarts et les décisions nécessaires avant développement, est disponible dans
+link:referentiel-transferts-v1.9.html[la conception du référentiel cible V1.9].
+
+Une évolution nécessite, pour chaque action :
+
+* un code d'anomalie REMOcRA validé ;
+* la compatibilité de ce code avec `NP` et/ou `CTP` ;
+* le tableau cible, `anomaliesConstatees`, `anomaliesControlees` ou les deux ;
+* tout champ complémentaire à transmettre, notamment une observation.
 
 == Enchaînement commun d'une visite
 
@@ -52,7 +76,7 @@ Pour une visite `MANUELLE`, valeur de `date_essai`. Un `NPQP` traité comme visi
 |Toujours `Eau de Paris`.
 
 |`pression`, `pressionDynamique`, `debit`
-|Ajoutés pour une visite `PIQP` et une visite manuelle lorsqu'au moins une mesure est présente.
+|Ajoutés uniquement pour une visite manuelle, issue de `date_maj_mj`, lorsqu'au moins une mesure est présente.
 Lorsque ce bloc est ajouté, les trois clés sont présentes ; une mesure source absente est envoyée à
 `null`.
 
@@ -74,6 +98,9 @@ Les règles suivantes s'appliquent à tous les préfixes de visite :
 * un libellé contenant `PB SIGNALETIQUE` ajoute `BSPP_PISD` et/ou `BSPP_BISD` seulement si ces
   codes sont accessibles pour le PEI et le type de visite ;
 * tout autre libellé envoie les deux tableaux vides.
+
+La règle cible qui demande de conserver une anomalie de signalétique lors d'un `EN SERVICE` n'est
+pas encore implémentée : le comportement actuel lève toutes les anomalies accessibles.
 
 Le statut disponible ou indisponible du PEI ne modifie pas ce premier payload de visite. Le flux
 séparé `INDISPO_TEMPORAIRE`, décrit plus loin, peut toutefois créer une seconde visite NP.
@@ -257,8 +284,9 @@ Le libellé contient `SANS EAU`. Le payload CTP ajoute `BSPP_APSE` dans les deux
 == Visites de type PIQP
 
 Les types dont le libellé commence par `PIQP` produisent un message `SPECIFIQUE` lorsque
-`date_maj_qp` est modifiée. Sync-remocra les convertit en `typeVisite: CTP` et ajoute les mesures
-lorsqu'au moins une valeur est présente. Le payload de base est :
+`date_maj_qp` est modifiée. Sync-remocra les convertit en `typeVisite: CTP`, sans transmettre les
+mesures débit/pression. Ces mesures sont réservées aux messages `MANUELLE` créés par `date_maj_mj`.
+Le payload de base est :
 
 [source,json]
 ----
@@ -266,86 +294,84 @@ lorsqu'au moins une valeur est présente. Le payload de base est :
   "typeVisite": "CTP",
   "date": "date_derniere_visite",
   "agent1": "Eau de Paris",
-  "pression": "essai_pression_statique ou null",
-  "pressionDynamique": "essai_pression_dynamique ou null",
-  "debit": "essai_debit ou null",
   "anomaliesConstatees": [],
   "anomaliesControlees": []
 }
 ----
 
-Les trois clés de mesure ne sont absentes que si les trois valeurs source sont absentes.
+Les clés de mesure ne sont jamais présentes pour une visite PIQP.
 
 === PIQP - POINT EAU INCENDIE APPAREIL DÉTERIORÉ
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+Le payload CTP conserve les deux tableaux d'anomalies vides.
 
 === PIQP - POINT EAU INCENDIE CONTROLE Q/P
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+Le payload CTP conserve les deux tableaux d'anomalies vides.
 
 === PIQP - POINT EAU INCENDIE CONTROLE REALISE
 
-Le payload CTP avec mesures éventuelles ajoute toutes les anomalies accessibles dans
+Le payload CTP ajoute toutes les anomalies accessibles dans
 `anomaliesControlees`. Aucune anomalie n'est placée dans `anomaliesConstatees`.
 
 === PIQP - POINT EAU INCENDIE COUVERCLE MANQU/DETERIOR
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+Le payload CTP conserve les deux tableaux d'anomalies vides.
 
 === PIQP - POINT EAU INCENDIE DEGORGER COFFRE/COLONNE
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+Le payload CTP conserve les deux tableaux d'anomalies vides.
 
 === PIQP - POINT EAU INCENDIE DEPOSE OU EN TRAVAUX
 
-Le libellé contient `TRAVAUX`. Le payload CTP avec mesures éventuelles ajoute `BSPP_APDP` dans les
+Le libellé contient `TRAVAUX`. Le payload CTP ajoute `BSPP_APDP` dans les
 deux tableaux.
 
 === PIQP - POINT EAU INCENDIE DIFFICILE A MANŒUVRER
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+Le payload CTP conserve les deux tableaux d'anomalies vides.
 
 === PIQP - POINT EAU INCENDIE EN ECOULEMENT
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+Le payload CTP conserve les deux tableaux d'anomalies vides.
 
 === PIQP - POINT EAU INCENDIE ENCOMBRE OU INACCESSIBLE
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+Le payload CTP conserve les deux tableaux d'anomalies vides.
 
 === PIQP - POINT EAU INCENDIE FUITE BAC
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+Le payload CTP conserve les deux tableaux d'anomalies vides.
 
 === PIQP - POINT EAU INCENDIE PB DEBIT/PRESSION
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides.
+Le payload CTP conserve les deux tableaux d'anomalies vides.
 
 === PIQP - POINT EAU INCENDIE PB SIGNALETIQUE
 
-Le payload CTP avec mesures éventuelles ajoute `BSPP_PISD` et/ou `BSPP_BISD` dans les deux tableaux,
+Le payload CTP ajoute `BSPP_PISD` et/ou `BSPP_BISD` dans les deux tableaux,
 selon les anomalies accessibles retournées par REMOcRA.
 
 === PIQP - POINT EAU INCENDIE PEI INTROUVABLE
 
-Le payload CTP avec mesures éventuelles conserve les deux tableaux d'anomalies vides. Le code ne
+Le payload CTP conserve les deux tableaux d'anomalies vides. Le code ne
 détecte pas `INTROUVABLE` et n'ajoute donc pas `BSPP_INTR` directement.
 
 === PIQP - POINT EAU INCENDIE SANS EAU
 
-Le libellé contient `SANS EAU`. Le payload CTP avec mesures éventuelles ajoute `BSPP_APSE` dans les
+Le libellé contient `SANS EAU`. Le payload CTP ajoute `BSPP_APSE` dans les
 deux tableaux.
 
 == Visites de type NPQP
 
 Un libellé commençant par `NPQP` reçu dans un message `SPECIFIQUE` est traité comme une visite
-manuelle : `typeVisite: NP`, mesures ajoutées si disponibles, et `date` égale à
-`date_derniere_visite`. Les règles communes d'anomalies s'appliquent au libellé complet.
+`NP`, avec `date` égale à `date_derniere_visite`. Les mesures ne sont pas ajoutées car le message
+ne provient pas de `date_maj_mj`. Les règles communes d'anomalies s'appliquent au libellé complet.
 
 == Visites manuelles
 
-Un message `MANUELLE`, créé à partir de `date_maj_mj`, appelle le même endpoint de visite avec :
+Un message `MANUELLE`, créé à partir de `date_maj_mj` par une saisie SmartMobility ou WatGIS,
+appelle le même endpoint de visite avec :
 
 [source,json]
 ----

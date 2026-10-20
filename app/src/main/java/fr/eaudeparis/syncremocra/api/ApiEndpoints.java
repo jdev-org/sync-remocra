@@ -15,7 +15,9 @@ public class ApiEndpoints {
   private static final String VISITES_SEGMENT = "/visites";
   private static final String CARACTERISTIQUES_SEGMENT = "/caracteristiques";
 
-  /** @return Endpoint de récupération des diffs PEI */
+  /**
+   * @return Endpoint de récupération des diffs PEI
+   */
   public String peiDiff() {
     return PEI_ROOT + "/diff";
   }
@@ -69,7 +71,9 @@ public class ApiEndpoints {
     return peiVisites(reference) + "/" + identifiantVisite;
   }
 
-  /** @return Endpoint de la collection des indisponibilités temporaires */
+  /**
+   * @return Endpoint de la collection des indisponibilités temporaires
+   */
   public String indispoTemporaire() {
     return INDISPO_TEMPORAIRE_ROOT;
   }

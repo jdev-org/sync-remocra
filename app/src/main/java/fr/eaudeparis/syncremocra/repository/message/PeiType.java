@@ -11,7 +11,9 @@ public enum PeiType {
     this.apiValue = apiValue;
   }
 
-  /** @return valeur attendue dans les chemins d'API REMOcRA */
+  /**
+   * @return valeur attendue dans les chemins d'API REMOcRA
+   */
   public String getApiValue() {
     return apiValue;
   }

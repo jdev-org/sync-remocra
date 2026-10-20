@@ -21,11 +21,15 @@ tag() {
 tag 0.1.0
 ```
 
-**2. Publier les images docker via le job [eau-de-paris/sync-remocra [release]](https://jenkins.priv.atolcd.com/blue/organizations/jenkins/eaudeparis--syncremocra--release/activity)**
+**2. Construire l'archive des images Docker**
 
-qui construit les images `edp/syncremocra` et `edp/syncremocra-pdi` avec une version calculée par rapport au dernier tag (ex : `0.1.0-3-gb9ec7dd`) et `latest` et la pousse dans le registre docker `client-docker-registry.atolcd.com`.
+Les workflows GitHub Actions ne publient pas d'images Docker. Depuis un clone positionne sur le tag a deployer, executer :
 
-Le paramètre `COMMIT_TO_BUILD` permet de choisir le commit, la branche ou le tag à construire (exemples : `f06318bef86c474e1f3a8ed6ba81bdc99b23c780`, `master`, `v1.0.0`).
+```sh
+./dist/package-tar.sh
+```
+
+Le script construit les images `edp/syncremocra` et `edp/syncremocra-pdi` avec la version du dernier tag et cree l'archive `dist/edp-syncremocra-docker-images-<version>.tar`.
 
 **3. Se connecter au serveur et mettre à jour la version à utiliser**
 

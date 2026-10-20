@@ -1,0 +1,494 @@
+= Conception - Référentiel cible des transferts V1.9
+Eau de Paris - Synchronisation Remocra
+v${project.version}, ${timestamp}
+
+:toc:
+:toclevels: 3
+
+* link:../index.html[Accueil]
+* link:regles-metier.html[Conception - vue d'ensemble]
+* link:visites-v3.html[Conception - comportement actuel des visites]
+* link:changedatacapture/visites.html[Conception - changedatacapture des visites]
+* link:pushworker/traitement-messages.html[Conception - traitement des messages du push-worker]
+
+== Objet
+
+Cette page est la transcription technique du classeur
+`additionnel/Referentiel_Transferts__EDP-BSPP_V1.9.xlsx`, pour les feuilles dont le nom commence
+par `CIBLE -` :
+
+* `CIBLE - Transfert VISITES` ;
+* `CIBLE - Transferts liés à AE`.
+
+Elle fixe l'ordre de réalisation futur : *une ligne du référentiel est un cas de développement,
+un test automatisé et un commit distinct*, après validation du métier et des codes REMOcRA par
+ATOL CD/BSPP. Elle ne modifie pas le comportement de l'application.
+
+Les colonnes `J` et `K` de la feuille des visites ne constituent pas à elles seules un contrat API :
+le type de visite est renseigné, mais plusieurs codes d'anomalie restent à définir. La colonne
+`R - PROPOSITIONS BSPP / VDP` est vide dans la version V1.9 reçue.
+
+== Légende de faisabilité
+
+|===
+|Statut |Signification
+
+|Conforme sous réserve de la vue
+|Le push-worker sait construire le payload attendu si la vue Oracle produit le déclencheur et le
+`type_derniere_visite` indiqués.
+
+|Écart applicatif
+|Le comportement actuel diffère de la cible : une évolution du changedatacapture et/ou du
+push-worker sera nécessaire.
+
+|Bloqué par le référentiel
+|Un code REMOcRA, le tableau cible (`anomaliesConstatees` ou `anomaliesControlees`), une
+observation, ou une règle de priorité manque. Aucun développement ne doit être engagé avant
+clarification.
+
+|Incohérence à arbitrer
+|Les cellules d'une même ligne ou de plusieurs lignes expriment des résultats incompatibles. Le
+métier doit confirmer la règle attendue avant implémentation.
+|===
+
+== Identifiants provisoires des anomalies à créer
+
+En attente des codes officiels ATOL CD/BSPP, les cas qui ne disposent pas d'un code d'anomalie
+validé sont repérés par un identifiant technique unique. Cet identifiant permet de nommer sans
+ambiguïté le test, le commit et la règle de code de chaque ligne.
+
+Il *ne doit jamais être placé dans un payload REMOcRA*. Lors de la validation d'un code officiel,
+l'identifiant provisoire sera remplacé dans la documentation, les tests et le code par ce code
+officiel. Les lignes disposant déjà d'un code (`BSPP_APDP`, `BSPP_APSE`, `BSPP_BISD` ou
+`BSPP_PISD`) n'ont pas d'identifiant provisoire.
+
+|===
+|Référence technique |Ligne du référentiel |Action de clôture
+
+|`CIBLE_V18_VISITE_L06` |6 |`APPAREIL DÉTERIORÉ` réalisable PIQP
+|`CIBLE_V18_VISITE_L07` |7 |`COUVERCLE MANQUANT / DETERIORE` réalisable PIQP
+|`CIBLE_V18_VISITE_L08` |8 |`PB DEBIT / PRESSION` réalisable PIQP
+|`CIBLE_V18_VISITE_L09` |9 |`DIFFICILE A MANŒUVRER` réalisable PIQP
+|`CIBLE_V18_VISITE_L10` |10 |`EN ECOULEMENT` réalisable PIQP
+|`CIBLE_V18_VISITE_L11` |11 |`DEGORGER COFFRE / COLONNE` réalisable PIQP
+|`CIBLE_V18_VISITE_L13` |13 |`PEI INTROUVABLE` PIQP
+|`CIBLE_V18_VISITE_L15` |15 |`ENCOMBRE OU INACCESSIBLE` PIQP
+|`CIBLE_V18_VISITE_L17` |17 |`APPAREIL DÉTERIORÉ` non réalisable PIQP
+|`CIBLE_V18_VISITE_L19` |19 |`COUVERCLE MANQUANT / DETERIORE` non réalisable PIQP
+|`CIBLE_V18_VISITE_L23` |23 |`APPAREIL DÉTERIORÉ` réalisable PICF
+|`CIBLE_V18_VISITE_L24` |24 |`COUVERCLE MANQUANT / DETERIORE` réalisable PICF
+|`CIBLE_V18_VISITE_L25` |25 |`PB DEBIT / PRESSION` réalisable PICF
+|`CIBLE_V18_VISITE_L26` |26 |`DIFFICILE A MANŒUVRER` réalisable PICF
+|`CIBLE_V18_VISITE_L27` |27 |`EN ECOULEMENT` réalisable PICF
+|`CIBLE_V18_VISITE_L28` |28 |`DEGORGER COFFRE / COLONNE` réalisable PICF
+|`CIBLE_V18_VISITE_L30` |30 |`PEI INTROUVABLE` PICF
+|`CIBLE_V18_VISITE_L32` |32 |`SANS EAU` PICF, en attente d'arbitrage
+|`CIBLE_V18_VISITE_L33` |33 |`ENCOMBRE OU INACCESSIBLE` PICF, en attente d'arbitrage
+|`CIBLE_V18_VISITE_L34` |34 |`APPAREIL DÉTERIORÉ` non réalisable PICF
+|`CIBLE_V18_VISITE_L36` |36 |`COUVERCLE MANQUANT / DETERIORE` non réalisable PICF
+|`CIBLE_V18_VISITE_L40` |40 |`DIFFICILE A MANŒUVRER` NP
+|`CIBLE_V18_VISITE_L41` |41 |`EN ECOULEMENT` NP
+|`CIBLE_V18_VISITE_L42` |42 |`DEGORGER COFFRE/COLONNE` NP
+|`CIBLE_V18_VISITE_L43` |43 |`PB DEBIT/PRESSION` NP
+|`CIBLE_V18_VISITE_L44` |44 |`APPAREIL DÉTERIORÉ` NP
+|`CIBLE_V18_VISITE_L45` |45 |`COUVERCLE MANQU/DETERIOR` NP
+|`CIBLE_V18_VISITE_L47` |47 |`ENCOMBRE OU INACCESSIBLE` NP
+|`CIBLE_V18_VISITE_L50` |50 |`RÉPARER APPAREIL` NP
+|`CIBLE_V18_VISITE_L52` |52 |`HORS SERVICE` NP
+|`CIBLE_V18_VISITE_L53` |53 |Toute autre action de clôture NP
+|===
+
+Les scénarios d'arrêt d'eau sont repérés indépendamment par `CIBLE_V18_AE_L04`,
+`CIBLE_V18_AE_L05` et `CIBLE_V18_AE_L06`. Ils décrivent des évolutions de flux et non des codes
+d'anomalie à envoyer.
+
+== Chaîne de responsabilité
+
+. WATGIS ou SmartMobility produit une action de clôture, des mesures ou une modification d'arrêt
+  d'eau.
+. Les vues Oracle exposent les données et une date de changement. Elles choisissent notamment le
+  déclencheur `date_maj_qp`, `date_maj_cf`, `date_maj_np`, `date_maj_mj` ou `date_maj_e`.
+. Le changedatacapture copie la ligne de vue dans la traçabilité et crée un message local. Il ne
+  traduit pas les libellés de clôture.
+. Le push-worker choisit le service REST, construit le payload et appelle REMOcRA.
+. REMOcRA applique ses règles sur les points d'attention et déduit l'état opérationnel du PEI.
+
+Les règles qui demandent qu'un contrôle périodique aboutisse en `NP` imposent donc que la vue
+fournisse `date_maj_np` et un `type_derniere_visite` commençant par `NP`, ou qu'une évolution
+explicite de la passerelle soit validée. Aujourd'hui, une ligne `PIQP` devient `CTP` et une ligne
+`PICF` devient `CTP`.
+
+== CIBLE - Transfert VISITES
+
+=== Contrôles périodiques PIQP, lignes 4 à 19
+
+Les lignes 4 à 19 concernent une création `A71 - CONTROLE PERIODIQUE / PIQP - CONTROLE Q/P`.
+La cible annonce une visite `CTP`. La feuille marque les mesures Q/P comme disponibles en entrée
+mais `Non` dans la colonne « Mesure Q/P reçue ». Les mesures sont donc réservées aux messages
+`MANUELLE` déclenchés par `date_maj_mj` (ligne 57), qu'elles proviennent de SmartMobility ou de
+WatGIS ; elles ne sont pas jointes aux visites PIQP.
+
+|===
+|Ligne |Action de clôture cible |Anomalie ou effet attendu |État de la passerelle
+
+|4
+|`CONTROLE REALISE`
+|`CTP`, toutes les anomalies accessibles dans `anomaliesControlees`, retrait des anomalies,
+PEI disponible.
+|Conforme : aucune mesure Q/P n'est jointe au payload.
+
+|5
+|`EN SERVICE`
+|`NP`, toutes les anomalies accessibles sauf signalétique absente, PEI disponible.
+|Écart applicatif : si la vue fournit bien `NP`, le type est conforme ; le code lève actuellement
+toutes les anomalies accessibles, y compris la signalétique.
+
+|6
+|`APPAREIL DÉTERIORÉ` - réalisable
+|`CTP`, signalement hors liste utilisable, sans impact d'état.
+|Bloqué par le référentiel : code BSPP et modalité de l'observation absents.
+
+|7
+|`COUVERCLE MANQUANT / DETERIORE` - réalisable
+|`CTP`, signalement hors liste utilisable, sans impact d'état.
+|Bloqué par le référentiel : code BSPP et modalité de l'observation absents.
+
+|8
+|`PB DEBIT / PRESSION` - réalisable
+|`CTP`, pression dynamique insuffisante, PEI indisponible si nécessaire.
+|Bloqué par le référentiel : code BSPP, seuil, tableaux d'anomalies et règle d'état à préciser.
+
+|9
+|`DIFFICILE A MANŒUVRER` - réalisable
+|`CTP`, anomalie « Difficile à manœuvrer (obstacle) », sans impact d'état.
+|Bloqué par le référentiel : colonne K vide.
+
+|10
+|`EN ECOULEMENT` - réalisable
+|`CTP`, anomalie « Appareil reste en écoulement », sans impact d'état.
+|Bloqué par le référentiel : code BSPP absent.
+
+|11
+|`DEGORGER COFFRE / COLONNE` - réalisable
+|`CTP`, deux anomalies eau dans coffre et colonne, sans impact d'état.
+|Bloqué par le référentiel : les deux codes BSPP sont absents.
+
+|12
+|`PB SIGNALETIQUE` - réalisable
+|`CTP`, `BSPP_BISD` si BI ou `BSPP_PISD` si PI.
+|Conforme, sous réserve que REMOcRA rende le code accessible pour le PEI et le type `CTP`.
+
+|13
+|`PEI INTROUVABLE` - non réalisable
+|`CTP`, anomalie Introuvable, PEI indisponible.
+|Bloqué par le référentiel : code BSPP absent.
+
+|14
+|`DEPOSE OU EN TRAVAUX` - non réalisable
+|`CTP`, code `BSPP_APDP`, PEI indisponible.
+|Partiellement conforme : le code envoie `BSPP_APDP` dans les deux tableaux. La colonne P parle
+cependant d'« Inaccessible : dans emprise de chantier », libellé non cohérent avec ce code.
+
+|15
+|`ENCOMBRE OU INACCESSIBLE` - non réalisable
+|`CTP`, deux anomalies véhicule/abords, sans impact d'état.
+|Bloqué par le référentiel : les deux codes BSPP sont absents.
+
+|16
+|`SANS EAU` - non réalisable
+|`CTP`, `BSPP_APSE`, PEI indisponible.
+|Conforme pour le code et les deux tableaux ; aucune mesure Q/P n'est transmise.
+
+|17
+|`APPAREIL DÉTERIORÉ` - non réalisable
+|`CTP`, Déposé ou en travaux, PEI indisponible.
+|Bloqué par le référentiel : code BSPP absent et même libellé que la ligne 6 avec effet différent.
+
+|18
+|`PB SIGNALETIQUE` - non réalisable
+|`CTP`, signalétique ou identification dégradée, sans impact d'état.
+|Conforme fonctionnellement avec `BSPP_BISD` ou `BSPP_PISD`. La valeur `SPP_BISD` de la cellule K
+est une coquille à corriger avant recette.
+
+|19
+|`COUVERCLE MANQUANT / DETERIORE` - non réalisable
+|`CTP`, signalement hors liste utilisable, sans impact d'état.
+|Bloqué par le référentiel : code BSPP et observation absents.
+|===
+
+=== Contrôles périodiques PICF, lignes 21 à 36
+
+Les lignes 21 à 36 concernent une création `A71 - CONTROLE PERIODIQUE / PICF - CONTROLE
+FONCTIONNEL`. La cible attend une visite `CTP` sans mesures. Cela correspond au comportement
+actuel pour le type de visite et les mesures.
+
+|===
+|Ligne |Action de clôture cible |Anomalie ou effet attendu |État de la passerelle
+
+|21
+|`CONTROLE REALISE`
+|Toutes les anomalies accessibles dans `anomaliesControlees`, PEI disponible.
+|Conforme.
+
+|22
+|`EN SERVICE`
+|`NP`, toutes les anomalies accessibles sauf signalétique absente, PEI disponible.
+|Écart applicatif : voir ligne 5.
+
+|23
+|`APPAREIL DÉTERIORÉ` - réalisable
+|Signalement hors liste utilisable, sans impact d'état.
+|Bloqué par le référentiel : code BSPP et observation absents.
+
+|24
+|`COUVERCLE MANQUANT / DETERIORE` - réalisable
+|Signalement hors liste utilisable, sans impact d'état.
+|Bloqué par le référentiel : code BSPP et observation absents.
+
+|25
+|`PB DEBIT / PRESSION` - réalisable
+|Pression dynamique insuffisante, PEI indisponible si nécessaire.
+|Bloqué par le référentiel : code BSPP, seuil, tableaux et règle d'état absents.
+
+|26
+|`DIFFICILE A MANŒUVRER` - réalisable
+|Difficile à manœuvrer, sans impact d'état.
+|Bloqué par le référentiel : colonne K vide.
+
+|27
+|`EN ECOULEMENT` - réalisable
+|Appareil reste en écoulement, sans impact d'état.
+|Bloqué par le référentiel : code BSPP absent.
+
+|28
+|`DEGORGER COFFRE / COLONNE` - réalisable
+|Deux anomalies eau dans coffre et colonne, sans impact d'état.
+|Bloqué par le référentiel : les deux codes BSPP sont absents.
+
+|29
+|`PB SIGNALETIQUE` - réalisable
+|`BSPP_BISD` si BI ou `BSPP_PISD` si PI.
+|Conforme, sous réserve de l'accessibilité REMOcRA.
+
+|30
+|`PEI INTROUVABLE` - non réalisable
+|Introuvable, PEI indisponible.
+|Bloqué par le référentiel : code BSPP absent.
+
+|31
+|`DEPOSE OU EN TRAVAUX` - non réalisable
+|`BSPP_APDP`, PEI indisponible.
+|Partiellement conforme : même réserve de cohérence code/libellé que la ligne 14.
+
+|32
+|`SANS EAU` - non réalisable
+|La ligne demande un signalement hors liste utilisable, sans impact d'état.
+|Incohérence à arbitrer : les lignes 16 et 49 associent `SANS EAU` à `BSPP_APSE` et à un PEI
+indisponible ; la cellule K est vide ici.
+
+|33
+|`ENCOMBRE OU INACCESSIBLE` - non réalisable
+|La ligne demande `BSPP_APSE` et « Sans Eau », PEI indisponible.
+|Incohérence à arbitrer : ce résultat correspond aux autres lignes `SANS EAU`, pas à
+`ENCOMBRE OU INACCESSIBLE`.
+
+|34
+|`APPAREIL DÉTERIORÉ` - non réalisable
+|Déposé ou en travaux, PEI indisponible.
+|Bloqué par le référentiel : code BSPP absent.
+
+|35
+|`PB SIGNALETIQUE` - non réalisable
+|`BSPP_BISD` si BI ou `BSPP_PISD` si PI.
+|Conforme fonctionnellement ; corriger la coquille `SPP_BISD` de la cellule K.
+
+|36
+|`COUVERCLE MANQUANT / DETERIORE` - non réalisable
+|Signalement hors liste, sans impact d'état.
+|Bloqué par le référentiel : code BSPP absent et cellule P incomplète.
+|===
+
+=== Visites NP, lignes 38 à 53
+
+Ces lignes couvrent toute création différente des contrôles périodiques `A71/PIQP` et `A71/PICF`.
+La cible impose `date_maj_np`, un `type_derniere_visite` sous la forme `NP - <action>` et une
+visite REMOcRA `NP`. Le push-worker est conforme sur le type à condition que la vue fournisse
+bien ces deux données.
+
+|===
+|Ligne |Action de clôture cible |Anomalie ou effet attendu |État de la passerelle
+
+|38
+|`CONTROLE REALISE`
+|Toutes les anomalies accessibles dans `anomaliesControlees`, PEI disponible.
+|Conforme.
+
+|39
+|`EN SERVICE`
+|Toutes les anomalies accessibles sauf signalétique absente, PEI disponible.
+|Écart applicatif : le code lève aussi la signalétique.
+
+|40
+|`DIFFICILE A MANŒUVRER`
+|Difficile à manœuvrer, sans impact d'état.
+|Bloqué par le référentiel : code BSPP absent.
+
+|41
+|`EN ECOULEMENT`
+|Appareil reste en écoulement, sans impact d'état.
+|Bloqué par le référentiel : code BSPP absent.
+
+|42
+|`DEGORGER COFFRE/COLONNE`
+|Deux anomalies eau dans coffre et colonne, sans impact d'état.
+|Bloqué par le référentiel : les deux codes BSPP sont absents.
+
+|43
+|`PB DEBIT/PRESSION`
+|Indisponible hors liste, PEI indisponible si nécessaire.
+|Bloqué par le référentiel : code BSPP, seuil, tableaux et règle d'état absents.
+
+|44
+|`APPAREIL DÉTERIORÉ`
+|Déposé ou en travaux, PEI indisponible.
+|Bloqué par le référentiel : code BSPP absent.
+
+|45
+|`COUVERCLE MANQU/DETERIOR`
+|Signalement hors liste utilisable, sans impact d'état.
+|Bloqué par le référentiel : code BSPP et observation absents.
+
+|46
+|`PB SIGNALETIQUE`
+|`BSPP_BISD` si BI ou `BSPP_PISD` si PI.
+|Conforme, sous réserve de l'accessibilité REMOcRA.
+
+|47
+|`ENCOMBRE OU INACCESSIBLE`
+|Signalement hors liste utilisable, sans impact d'état.
+|Bloqué par le référentiel : code BSPP et observation absents.
+
+|48
+|`DEPOSE OU EN TRAVAUX`
+|`BSPP_APDP`, PEI indisponible.
+|Conforme pour le code et les deux tableaux.
+
+|49
+|`SANS EAU`
+|`BSPP_APSE`, PEI indisponible.
+|Conforme pour le code et les deux tableaux.
+
+|50
+|`RÉPARER APPAREIL`
+|Déposé ou en travaux, PEI indisponible.
+|Écart applicatif : le code de visite ne reconnaît ni `REPARER` ni la variante accentuée ; le code
+REMOcRA reste à valider.
+
+|51
+|`A RENOUVELER`
+|`BSPP_APDP`, PEI indisponible.
+|Conforme : le rapprochement actuel est fait sur la sous-chaîne `RENOUVELER`.
+
+|52
+|`HORS SERVICE`
+|Sans eau, PEI indisponible.
+|Bloqué par le référentiel : code BSPP absent.
+
+|53
+|Toute autre action de clôture
+|Signalement hors liste utilisable, sans impact d'état.
+|Bloqué par le référentiel : code BSPP et format d'observation absents.
+|===
+
+=== Contrôles ponctuels, lignes 54 et 55
+
+Les deux lignes indiquent que les créations `A72 - CONTROLE PONCTUEL` suivent le même mapping
+d'action que les lignes précédentes, mais doivent toujours devenir une visite `NP`, déclenchée par
+`date_maj_np` :
+
+|===
+|Ligne |Type local |Cible |État de la passerelle
+
+|54
+|`PIQP`
+|`NP` avec le mapping d'anomalies de l'action concernée.
+|Conforme sous réserve de la vue : la passerelle ne transforme pas elle-même `PIQP` en `NP`.
+
+|55
+|`PICF`
+|`NP` avec le mapping d'anomalies de l'action concernée.
+|Conforme sous réserve de la vue : la passerelle ne transforme pas elle-même `PICF` en `NP`.
+|===
+
+=== Saisie manuelle de mesures, ligne 57
+
+Une modification des valeurs Q/P, qu'elle provienne de SmartMobility ou de WatGIS, doit modifier
+`date_maj_mj`, créer un message `MANUELLE`, puis envoyer une visite `NP` avec `pression`,
+`pressionDynamique` et `debit`.
+La cible demande que REMOcRA applique son anomalie de pression dynamique insuffisante lorsque la
+valeur est inférieure à 1 bar ou 60 m3/h.
+
+Le transport des mesures est *conforme*. La passerelle ne calcule pas ce seuil et n'ajoute pas
+elle-même de point d'attention : cette règle relève de REMOcRA ou nécessite une règle explicitement
+attribuée à Sync-remocra.
+
+=== Mise à jour patrimoniale, ligne 58
+
+La ligne 58 est une cible `CARACTERISTIQUES`, et non une visite. Une modification patrimoniale
+doit modifier `date_maj_p`, créer un message `CARACTERISTIQUES`, puis déclencher le push-worker.
+Celui-ci identifie la nature `PIBI` ou `PENA` et transmet, selon le cas, les informations de
+diamètre, canalisation, PEI jumelé, marque, modèle, réseau et canalisation au service de
+caractéristiques REMOcRA.
+
+Cette cible est décrite dans
+link:pushworker/caracteristiques-v3.html[la conception des caractéristiques REMOcRA V3]. Toute
+nouvelle colonne de vue ou règle de correspondance doit être ajoutée à cette page avant évolution.
+
+== CIBLE - Transferts liés à AE
+
+La feuille `CIBLE - Transferts liés à AE` porte les arrêts d'eau (`AE`) et les indisponibilités
+temporaires (`IT`). Son en-tête indique explicitement « Faisabilité à étudier » : les trois lignes
+ci-dessous sont une cible, pas un comportement validé de la passerelle actuelle.
+
+|===
+|Ligne |Événement source |Cible REMOcRA |État de la passerelle
+
+|4
+|Passage de l'arrêt d'eau `ARRET EAU` à `EN COURS`, PEI disponible vers indisponible,
+`date_maj_e` modifiée.
+|Mettre le PEI indisponible, créer une visite NP avec Sans eau et créer une IT dont le début est
+`date_maj_e` et la fin est `date_fin_prevue`.
+|Écart applicatif : le code actuel peut créer l'IT et la visite de motifs, mais l'IT ne porte pas
+la date de fin prévisionnelle de la vue.
+
+|5
+|Modification isolée de `date_fin_prevue`.
+|Modifier la date de fin de l'IT active.
+|Écart applicatif : `date_maj_ae` n'existe pas dans la vue, la traçabilité ni le
+changedatacapture. Une modification de la seule date de fin n'est donc pas détectée.
+
+|6
+|Passage de l'arrêt d'eau à `TERMINEE` ou `ANNULEE`, PEI indisponible vers disponible,
+`date_maj_e` modifiée.
+|Retirer l'anomalie Sans eau, fermer l'IT active et mettre le PEI disponible seulement sans
+anomalie bloquante résiduelle.
+|Partiellement conforme : le code ferme l'IT et peut envoyer la levée des motifs. La règle de
+maintien de l'état selon les anomalies résiduelles est appliquée par REMOcRA ; la fermeture de
+l'IT n'envoie pas de date de fin prévisionnelle.
+|===
+
+== Préparation des développements ligne par ligne
+
+Chaque évolution future devra respecter la séquence suivante :
+
+. confirmer la ligne du référentiel, notamment le code BSPP, le type de visite et les deux tableaux
+  d'anomalies ;
+. identifier si la vue Oracle fournit déjà le déclencheur et le libellé nécessaires ;
+. implémenter le plus petit changement factorisé dans le changedatacapture ou le push-worker ;
+. ajouter un test unitaire couvrant le payload complet et, lorsque nécessaire, le message créé ;
+. mettre à jour cette page avec le statut « implémenté » et le numéro de version ;
+. obtenir la validation métier sur cette seule ligne avant le commit suivant.
+
+Les règles existantes qui ne sont pas listées dans le classeur V1.9 seront inventoriées après la
+mise en oeuvre de toutes les lignes cibles. Elles ne doivent pas être supprimées ni modifiées sans
+une décision métier explicite.

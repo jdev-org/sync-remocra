@@ -34,11 +34,13 @@ public class PointBinding implements Binding<Object, Point> {
     reader = new WKBReader();
     writer = new WKBWriter(3 /* outputDimension */, true /* includeSRID */);
   }
+
   // The converter does all the work
   @Override
   public Converter<Object, Point> converter() {
     return new PointConverter();
   }
+
   // Rending a bind variable for the binding context's value and casting it to the Point type
   @Override
   public void sql(BindingSQLContext<Point> ctx) {
@@ -49,31 +51,37 @@ public class PointBinding implements Binding<Object, Point> {
     }
     ctx.render().sql("ST_GeomFromEWKB(").visit(DSL.val(value)).sql(")");
   }
+
   // Registering BLOB types for JDBC CallableStatement OUT parameters
   @Override
   public void register(BindingRegisterContext<Point> ctx) throws SQLException {
     ctx.statement().registerOutParameter(ctx.index(), Types.BLOB);
   }
+
   // Converting the Point to a byte[] value and setting that on a JDBC PreparedStatement
   @Override
   public void set(BindingSetStatementContext<Point> ctx) throws SQLException {
     ctx.statement().setBytes(ctx.index(), (byte[]) ctx.convert(converter()).value());
   }
+
   // Getting a String value from a JDBC ResultSet and converting that to a Point
   @Override
   public void get(BindingGetResultSetContext<Point> ctx) throws SQLException {
     ctx.convert(converter()).value(ctx.resultSet().getString(ctx.index()));
   }
+
   // Getting a String value from a JDBC CallableStatement and converting that to a Point
   @Override
   public void get(BindingGetStatementContext<Point> ctx) throws SQLException {
     ctx.convert(converter()).value(ctx.statement().getString(ctx.index()));
   }
+
   // Setting a value on a JDBC SQLOutput (useful for Oracle OBJECT types)
   @Override
   public void set(BindingSetSQLOutputContext<Point> ctx) throws SQLException {
     throw new SQLFeatureNotSupportedException();
   }
+
   // Getting a value from a JDBC SQLInput (useful for Oracle OBJECT types)
   @Override
   public void get(BindingGetSQLInputContext<Point> ctx) throws SQLException {

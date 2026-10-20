@@ -176,7 +176,9 @@ public class PullMessageRepository {
    * @throws APIAuthentException
    */
   private void modificationVisite(PeiDiffModel modif)
-      throws APIConnectionException, RequestException, JsonProcessingException,
+      throws APIConnectionException,
+          RequestException,
+          JsonProcessingException,
           APIAuthentException {
     String nomOrganisme = this.parametresRepository.get("NOM_ORGANISME");
 
@@ -212,7 +214,9 @@ public class PullMessageRepository {
    * @throws JsonProcessingException
    */
   private void modificationCaracteristiques(PeiDiffModel modif)
-      throws APIConnectionException, RequestException, APIAuthentException,
+      throws APIConnectionException,
+          RequestException,
+          APIAuthentException,
           JsonProcessingException {
     if ("DELETE".equals(modif.getOperation())) {
       System.out.println("[" + modif.getNumero() + "] Opération effectuée : DELETE");
@@ -333,7 +337,9 @@ public class PullMessageRepository {
    * @throws JsonProcessingException
    */
   private void recuperationVisites(String numero)
-      throws APIConnectionException, RequestException, APIAuthentException,
+      throws APIConnectionException,
+          RequestException,
+          APIAuthentException,
           JsonProcessingException {
 
     // Récupération infos PEI

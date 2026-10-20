@@ -21,6 +21,8 @@ include::include/historique.adoc[]
 * link:Manuel%20exploitation.html[Manuel d'exploitation]
 * link:conception/regles-metier.html[Conception - vue d'ensemble]
 * link:conception/visites-v3.html[Conception - traitement des visites REMOcRA V3]
+* link:conception/referentiel-transferts-v1.9.html[Conception - référentiel cible des transferts V1.9]
+* link:conception/changedatacapture/visites.html[Conception - détection des visites par le changedatacapture]
 * link:conception/pushworker/caracteristiques-v3.html[Conception - caractéristiques REMOcRA V3]
 * link:conception/pushworker/traitement-messages.html[Conception - traitement des messages du push-worker]
 

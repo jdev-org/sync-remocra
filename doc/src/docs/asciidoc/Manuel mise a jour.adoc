@@ -55,6 +55,9 @@ Bonnes pratiques de versionnement Docker :
 
 === Vérifications spécifiques à REMOcRA V3
 
+La version applicative inclut le runtime Java 21. Mettre à jour l'image de tous les jobs ensemble ;
+ne pas conserver un conteneur démarré avec une image antérieure utilisant Java 11.
+
 La mise à jour V3 ne doit pas être limitée au seul script du push-worker. Vérifier que tous les
 scripts exécutant l'application utilisent la même image et le même tag, en particulier :
 

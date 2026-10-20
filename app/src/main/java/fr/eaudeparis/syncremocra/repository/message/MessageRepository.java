@@ -318,7 +318,9 @@ public class MessageRepository {
    * @throws APIAuthentException Impossible de s'authentifier à l'API
    */
   private ObjectNode traiterMessageVisite(MessageModel message, String reference)
-      throws APIConnectionException, RequestException, APIAuthentException,
+      throws APIConnectionException,
+          RequestException,
+          APIAuthentException,
           JsonProcessingException {
 
     logger.info("Traitement visite " + message.getId_traca_pei());
@@ -847,7 +849,10 @@ public class MessageRepository {
    * @return Un json contenant les données de la visite à envoyer à Remocra
    */
   private ObjectNode traiterMessageSpecifique(MessageModel message, String reference)
-      throws APIConnectionException, RequestException, JsonProcessingException, APIAuthentException,
+      throws APIConnectionException,
+          RequestException,
+          JsonProcessingException,
+          APIAuthentException,
           InternalException {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode visite = mapper.createObjectNode();
@@ -863,9 +868,6 @@ public class MessageRepository {
 
     if ("CTP".equals(typeVisite)) {
       visite.put("typeVisite", "CTP");
-      if (typeDerniereVisite.startsWith("PIQP")) {
-        visite = this.recuperationsValeursDebitPression(visite, traca);
-      }
     } else if ((typeDerniereVisite.startsWith("NPQP"))) {
       // Dans le cas d'une NPQP, le comportement attendu est identique à celui d'une
       // intervention manuelle (NP avec anomalies sans débit/pression)
@@ -908,7 +910,10 @@ public class MessageRepository {
    * @return Un json contenant les données de la visite à envoyer à Remocra
    */
   private ObjectNode traiterMessageManuelle(MessageModel message, String reference)
-      throws APIConnectionException, RequestException, JsonProcessingException, APIAuthentException,
+      throws APIConnectionException,
+          RequestException,
+          JsonProcessingException,
+          APIAuthentException,
           InternalException {
     ObjectMapper mapper = new ObjectMapper();
     ObjectNode visite = mapper.createObjectNode();
@@ -929,20 +934,38 @@ public class MessageRepository {
     }
     visite.put("typeVisite", "NP");
     visite.put("agent1", "Eau de Paris");
-    appendHydraulicMeasurementsIfPresent(visite, traca);
+    appendHydraulicMeasurementsForMessage(visite, traca, message.getType());
     visite = this.recuperationAnomalies(visite, traca);
     return visite;
   }
 
   /**
-   * Récupère les valeurs de débit/pression d'un PEI et les ajoute à une visite
+   * Détermine si le message peut transmettre les mesures hydrauliques d'essai.
    *
-   * @param v ObjectNode contenant les informations de la visite
-   * @param traca la ligne de tracabilité du PEI souhaité
-   * @return Les données de la visite
+   * <p>Le référentiel cible V1.8 réserve ce transfert aux saisies manuelles provenant de {@code
+   * date_maj_mj}. Les visites spécifiques, notamment les PIQP, ne transmettent pas les mesures.
+   *
+   * @param messageType type du message local
+   * @return {@code true} uniquement pour un message {@code MANUELLE}
    */
-  private ObjectNode recuperationsValeursDebitPression(ObjectNode v, TracabilitePei traca) {
-    return appendHydraulicMeasurementsIfPresent(v, traca);
+  static boolean shouldAppendHydraulicMeasurements(String messageType) {
+    return "MANUELLE".equalsIgnoreCase(messageType);
+  }
+
+  /**
+   * Ajoute les mesures au payload lorsque le type du message les autorise.
+   *
+   * @param visitPayload payload de visite à enrichir
+   * @param traca ligne de traçabilité source
+   * @param messageType type du message local
+   * @return payload enrichi ou inchangé
+   */
+  static ObjectNode appendHydraulicMeasurementsForMessage(
+      ObjectNode visitPayload, TracabilitePei traca, String messageType) {
+    if (!shouldAppendHydraulicMeasurements(messageType)) {
+      return visitPayload;
+    }
+    return appendHydraulicMeasurementsIfPresent(visitPayload, traca);
   }
 
   /**
@@ -1053,7 +1076,10 @@ public class MessageRepository {
    * @return Les données de la visite
    */
   private ObjectNode recuperationAnomalies(ObjectNode v, TracabilitePei traca)
-      throws APIConnectionException, RequestException, JsonProcessingException, APIAuthentException,
+      throws APIConnectionException,
+          RequestException,
+          JsonProcessingException,
+          APIAuthentException,
           InternalException {
     String typeDerniereVisite =
         (traca.getTypeDerniereVisite() != null)

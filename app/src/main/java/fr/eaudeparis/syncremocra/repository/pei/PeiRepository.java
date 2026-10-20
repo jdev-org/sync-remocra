@@ -107,7 +107,9 @@ public class PeiRepository {
    */
   public ArrayList<String> getNaturesAnomaliesAccessibles(
       String reference, String typeVisite, boolean bloquante)
-      throws RequestException, JsonProcessingException, APIConnectionException,
+      throws RequestException,
+          JsonProcessingException,
+          APIConnectionException,
           APIAuthentException {
     String dataPei = this.requestManager.sendGetRequest(apiEndpoints.pei(reference));
     String dataNaturesPibi =

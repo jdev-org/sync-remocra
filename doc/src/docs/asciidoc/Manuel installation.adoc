@@ -30,6 +30,13 @@ Pour bien maitriser le processus d'installation et prendre en compte les spécif
 
 Deux options se présentent : avec registre ou sans registre.
 
+=== Prérequis Java
+
+Les images applicatives Sync REMOcRA sont exécutées avec Java 21. Les postes de développement,
+les agents CI et toute exécution Maven hors conteneur doivent donc disposer d'un JDK 21.
+Le conteneur PDI, indépendant de l'application Sync REMOcRA, reste en Java 8 en raison de sa
+compatibilité avec Pentaho Data Integration 9.1.
+
 
 === Installation avec registre
 

@@ -9,4 +9,11 @@
 |0.3 |05/06/2026 |Adaptation technique à REMOcRA V3 : authentification Keycloak et gestion des versions des images Docker
 |0.4 |01/09/2026 |Mise à jour des manuels REMOcRA V3 et ajout de la documentation de conception des règles métiers et du push-worker
 |0.5 |04/09/2026 |Ajout des correspondances d'indisponibilité `FERME DEMANDE SSQ` et `APP PROJET` vers `BSPP_APSE`, et procédure de diagnostic des jobs Docker bloqués
+|0.6 |08/10/2026 |Ajout de la conception changedatacapture des visites, de ses limites de dédoublonnage et des prérequis du référentiel cible
+|0.7 |19/10/2026 |Ajout de la traçabilité de toutes les feuilles `CIBLE -` du référentiel de transferts V1.8 : visites, mesures, patrimoine et arrêts d'eau/IT
+|0.8 |19/10/2026 |Ajout d'identifiants techniques provisoires, uniques par ligne cible sans code BSPP validé, pour préparer les développements et tests unitaires
+|0.9 |19/10/2026 |Ligne 4 du référentiel cible : les visites PIQP/CTP ne transmettent plus les mesures Q/P, réservées aux saisies manuelles `date_maj_mj`
+|1.0 |20/10/2026 |Mise à jour du référentiel cible V1.9 : ligne 57 déclenchée par `date_maj_mj` quelle que soit la source et ligne 58 déclenchée par `date_maj_p`
+|1.1 |20/10/2026 |Migration technique de Sync REMOcRA vers Java 21 : compilation, images Docker, GitHub Actions et documentation
+|1.2 |20/10/2026 |Suppression des supports Jenkins et Vagrant obsoletes, et mise a jour des procedures de CI et de distribution
 |=======================================================================

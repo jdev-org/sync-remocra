@@ -71,16 +71,13 @@ public class HttpTestJob implements Job {
     boolean success();
 
     @JsonProperty("message")
-    @Nullable
-    String message();
+    @Nullable String message();
 
     @JsonProperty("total")
-    @Nullable
-    Integer total();
+    @Nullable Integer total();
 
     @JsonProperty("data")
-    @Nullable
-    Thematique[] data();
+    @Nullable Thematique[] data();
   }
 
   @JsonDeserialize(as = ImmutableHttpTestJob.Thematique.class)
@@ -97,7 +94,6 @@ public class HttpTestJob implements Job {
     String nom();
 
     @JsonProperty("version")
-    @Nullable
-    Integer version();
+    @Nullable Integer version();
   }
 }

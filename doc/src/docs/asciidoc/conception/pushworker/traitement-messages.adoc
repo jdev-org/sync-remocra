@@ -7,7 +7,9 @@ v${project.version}, ${timestamp}
 
 * link:../../index.html[Accueil]
 * link:../regles-metier.html[Conception - vue d'ensemble]
+* link:../referentiel-transferts-v1.9.html[Conception - référentiel cible des transferts V1.9]
 * link:../visites-v3.html[Conception - traitement des visites REMOcRA V3]
+* link:../changedatacapture/visites.html[Conception - détection des visites par le changedatacapture]
 * link:caracteristiques-v3.html[Conception - caractéristiques REMOcRA V3]
 
 == Objet et périmètre
@@ -51,6 +53,10 @@ fin du job.
 Les types de visites, les payloads et les règles de motifs sont détaillés dans
 link:../visites-v3.html[le document de conception des visites]. Les caractéristiques sont détaillées
 dans link:caracteristiques-v3.html[le document de conception des caractéristiques].
+La cible à réaliser du référentiel V1.9, avec le statut de chaque ligne, est décrite dans
+link:../referentiel-transferts-v1.9.html[la conception du référentiel cible des transferts].
+La création amont des messages et les risques de doublon sont décrits dans
+link:../changedatacapture/visites.html[le document de conception du changedatacapture].
 
 == Enregistrement du payload
 

@@ -17,12 +17,16 @@ public final class PeiCaracteristiquesUpdate {
     this.payload = payload;
   }
 
-  /** @return endpoint cible REMOcRA */
+  /**
+   * @return endpoint cible REMOcRA
+   */
   public String getPath() {
     return path;
   }
 
-  /** @return charge utile à transmettre */
+  /**
+   * @return charge utile à transmettre
+   */
   public ObjectNode getPayload() {
     return payload;
   }

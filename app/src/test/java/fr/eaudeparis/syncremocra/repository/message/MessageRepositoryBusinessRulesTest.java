@@ -27,6 +27,27 @@ public class MessageRepositoryBusinessRulesTest {
   }
 
   @Test
+  public void shouldHandleCibleV18VisiteL04WithoutHydraulicMeasurements() {
+    String localVisitType = "PIQP - CONTROLE REALISE";
+    TracabilitePei traca = new TracabilitePei();
+    traca.setEssaiPressionStatique(BigDecimal.valueOf(2.4d));
+    traca.setEssaiPressionDynamique(BigDecimal.valueOf(1.3d));
+    traca.setEssaiDebit(BigDecimal.valueOf(90));
+
+    ObjectNode payload =
+        MessageRepository.appendHydraulicMeasurementsForMessage(
+            mapper.createObjectNode(), traca, "SPECIFIQUE");
+
+    assertEquals("CTP", VisitTypeMapper.toRemocraType(localVisitType));
+    assertTrue(MessageRepository.shouldClearAllAnomalies(localVisitType));
+    assertFalse(MessageRepository.shouldAppendHydraulicMeasurements("SPECIFIQUE"));
+    assertTrue(MessageRepository.shouldAppendHydraulicMeasurements("MANUELLE"));
+    assertFalse(payload.has("pression"));
+    assertFalse(payload.has("pressionDynamique"));
+    assertFalse(payload.has("debit"));
+  }
+
+  @Test
   public void shouldAppendHydraulicMeasurementsWhenPresent() {
     TracabilitePei traca = new TracabilitePei();
     traca.setEssaiPressionStatique(BigDecimal.valueOf(2.4d));
@@ -34,7 +55,8 @@ public class MessageRepositoryBusinessRulesTest {
     traca.setEssaiDebit(BigDecimal.valueOf(90));
 
     ObjectNode payload =
-        MessageRepository.appendHydraulicMeasurementsIfPresent(mapper.createObjectNode(), traca);
+        MessageRepository.appendHydraulicMeasurementsForMessage(
+            mapper.createObjectNode(), traca, "MANUELLE");
 
     assertTrue(MessageRepository.hasHydraulicMeasurements(traca));
     assertEquals(2.4d, payload.get("pression").asDouble(), 0.0d);
