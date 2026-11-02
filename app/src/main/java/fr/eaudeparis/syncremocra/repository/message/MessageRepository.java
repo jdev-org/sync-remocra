@@ -1090,7 +1090,7 @@ public class MessageRepository {
         this.peiRepository.getNaturesAnomaliesAccessibles(
             traca.getReference(), v.get("typeVisite").textValue(), false);
     VisitAnomalyMapper.VisitAnomalies anomalies =
-        VisitAnomalyMapper.map(typeDerniereVisite, toutesAnomalies);
+        VisitAnomalyMapper.map(typeDerniereVisite, toutesAnomalies, traca.getEtat());
 
     ObjectMapper mapper = new ObjectMapper();
     ArrayNode arrayAnomaliesControlees = mapper.createArrayNode();

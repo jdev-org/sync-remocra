@@ -18,9 +18,11 @@ final class VisitAnomalyMapper {
    *
    * @param localVisitType local visit type and closure action
    * @param accessibleAnomalies anomalies enabled by REMOcRA for the PEI and visit type
+   * @param peiState source PEI state, used by conditional mappings
    * @return anomaly lists for the REMOcRA visit payload
    */
-  static VisitAnomalies map(String localVisitType, List<String> accessibleAnomalies) {
+  static VisitAnomalies map(
+      String localVisitType, List<String> accessibleAnomalies, String peiState) {
     List<String> anomaliesControlees = new ArrayList<>();
     List<String> anomaliesConstatees = new ArrayList<>();
 
@@ -38,8 +40,55 @@ final class VisitAnomalyMapper {
       addToBoth("BSPP_APDP", anomaliesControlees, anomaliesConstatees);
     }
 
+    if (normalizedVisitType.contains("REPARER APPAREIL")) {
+      addToBoth("BSPP_APDP", anomaliesControlees, anomaliesConstatees);
+    }
+
     if (normalizedVisitType.contains("SANS EAU")) {
       addToBoth("BSPP_APSE", anomaliesControlees, anomaliesConstatees);
+    }
+
+    if (normalizedVisitType.contains("APPAREIL DETERIORE")) {
+      boolean ctpVisit = isCtpVisit(normalizedVisitType);
+      boolean availablePei = "DISPONIBLE".equals(normalize(peiState));
+      addToBoth(
+          ctpVisit && availablePei ? "BSPP_SINC" : "BSPP_APDP",
+          anomaliesControlees,
+          anomaliesConstatees);
+    }
+
+    if (normalizedVisitType.contains("HORS SERVICE")) {
+      addToBoth("BSPP_APSE", anomaliesControlees, anomaliesConstatees);
+    }
+
+    if (normalizedVisitType.contains("DIFFICILE A MANOEUVRER")) {
+      addToBoth("BSPP_DIFF", anomaliesControlees, anomaliesConstatees);
+    }
+
+    if (normalizedVisitType.contains("EN ECOULEMENT")) {
+      addToBoth("BSPP_AREE", anomaliesControlees, anomaliesConstatees);
+    }
+
+    if (normalizedVisitType.contains("DEGORGER COFFRE")) {
+      addToBoth("BSPP_PODC", anomaliesControlees, anomaliesConstatees);
+      addToBoth("BSPP_PDCL", anomaliesControlees, anomaliesConstatees);
+    }
+
+    if (normalizedVisitType.contains("PEI INTROUVABLE")) {
+      addToBoth("BSPP_INTR", anomaliesControlees, anomaliesConstatees);
+    }
+
+    if (normalizedVisitType.contains("ENCOMBRE") || normalizedVisitType.contains("INACCESSIBLE")) {
+      addToBoth("VEHICULE_EN_STATIONNEMENT_SUR_BI", anomaliesControlees, anomaliesConstatees);
+      addToBoth("BSPP_ACPV", anomaliesControlees, anomaliesConstatees);
+    }
+
+    if (normalizedVisitType.contains("PB DEBIT")) {
+      addToBoth("DEBIT_NON_CONFORME", anomaliesControlees, anomaliesConstatees);
+    }
+
+    if (normalizedVisitType.contains("COUVERCLE MANQU")) {
+      addToBoth("BSPP_CPMD", anomaliesControlees, anomaliesConstatees);
     }
 
     if (normalizedVisitType.contains("PB SIGNALETIQUE")) {
@@ -50,6 +99,10 @@ final class VisitAnomalyMapper {
     }
 
     return new VisitAnomalies(anomaliesControlees, anomaliesConstatees);
+  }
+
+  static VisitAnomalies map(String localVisitType, List<String> accessibleAnomalies) {
+    return map(localVisitType, accessibleAnomalies, null);
   }
 
   /**
@@ -68,7 +121,21 @@ final class VisitAnomalyMapper {
   }
 
   private static String normalize(String value) {
-    return Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}+", "").toUpperCase();
+    if (value == null) {
+      return "";
+    }
+    return Normalizer.normalize(value, Normalizer.Form.NFD)
+        .replaceAll("\\p{M}+", "")
+        .replace("\u0152", "OE")
+        .replace("\u0153", "oe")
+        .toUpperCase();
+  }
+
+  private static boolean isCtpVisit(String normalizedVisitType) {
+    return normalizedVisitType.startsWith("CTP")
+        || normalizedVisitType.startsWith("PICF")
+        || normalizedVisitType.startsWith("PIQP")
+        || normalizedVisitType.startsWith("CTRL");
   }
 
   private static void addAccessibleToBoth(

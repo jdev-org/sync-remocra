@@ -59,42 +59,14 @@ ambiguïté le test, le commit et la règle de code de chaque ligne.
 
 Il *ne doit jamais être placé dans un payload REMOcRA*. Lors de la validation d'un code officiel,
 l'identifiant provisoire sera remplacé dans la documentation, les tests et le code par ce code
-officiel. Les lignes disposant déjà d'un code (`BSPP_APDP`, `BSPP_APSE`, `BSPP_BISD` ou
-`BSPP_PISD`) n'ont pas d'identifiant provisoire.
+officiel. Les lignes disposant déjà d'un code (`BSPP_APDP`, `BSPP_APSE`, `BSPP_BISD`,
+`BSPP_PISD`, `BSPP_CPMD` ou `DEBIT_NON_CONFORME`) n'ont pas d'identifiant provisoire.
 
 |===
 |Référence technique |Ligne du référentiel |Action de clôture
 
-|`CIBLE_V18_VISITE_L06` |6 |`APPAREIL DÉTERIORÉ` réalisable PIQP
-|`CIBLE_V18_VISITE_L07` |7 |`COUVERCLE MANQUANT / DETERIORE` réalisable PIQP
-|`CIBLE_V18_VISITE_L08` |8 |`PB DEBIT / PRESSION` réalisable PIQP
-|`CIBLE_V18_VISITE_L09` |9 |`DIFFICILE A MANŒUVRER` réalisable PIQP
-|`CIBLE_V18_VISITE_L10` |10 |`EN ECOULEMENT` réalisable PIQP
-|`CIBLE_V18_VISITE_L11` |11 |`DEGORGER COFFRE / COLONNE` réalisable PIQP
-|`CIBLE_V18_VISITE_L13` |13 |`PEI INTROUVABLE` PIQP
-|`CIBLE_V18_VISITE_L15` |15 |`ENCOMBRE OU INACCESSIBLE` PIQP
-|`CIBLE_V18_VISITE_L17` |17 |`APPAREIL DÉTERIORÉ` non réalisable PIQP
-|`CIBLE_V18_VISITE_L19` |19 |`COUVERCLE MANQUANT / DETERIORE` non réalisable PIQP
 |`CIBLE_V18_VISITE_L23` |23 |`APPAREIL DÉTERIORÉ` réalisable PICF
-|`CIBLE_V18_VISITE_L24` |24 |`COUVERCLE MANQUANT / DETERIORE` réalisable PICF
-|`CIBLE_V18_VISITE_L25` |25 |`PB DEBIT / PRESSION` réalisable PICF
-|`CIBLE_V18_VISITE_L26` |26 |`DIFFICILE A MANŒUVRER` réalisable PICF
-|`CIBLE_V18_VISITE_L27` |27 |`EN ECOULEMENT` réalisable PICF
-|`CIBLE_V18_VISITE_L28` |28 |`DEGORGER COFFRE / COLONNE` réalisable PICF
-|`CIBLE_V18_VISITE_L30` |30 |`PEI INTROUVABLE` PICF
-|`CIBLE_V18_VISITE_L32` |32 |`SANS EAU` PICF, en attente d'arbitrage
-|`CIBLE_V18_VISITE_L33` |33 |`ENCOMBRE OU INACCESSIBLE` PICF, en attente d'arbitrage
-|`CIBLE_V18_VISITE_L34` |34 |`APPAREIL DÉTERIORÉ` non réalisable PICF
-|`CIBLE_V18_VISITE_L36` |36 |`COUVERCLE MANQUANT / DETERIORE` non réalisable PICF
-|`CIBLE_V18_VISITE_L40` |40 |`DIFFICILE A MANŒUVRER` NP
-|`CIBLE_V18_VISITE_L41` |41 |`EN ECOULEMENT` NP
-|`CIBLE_V18_VISITE_L42` |42 |`DEGORGER COFFRE/COLONNE` NP
-|`CIBLE_V18_VISITE_L43` |43 |`PB DEBIT/PRESSION` NP
-|`CIBLE_V18_VISITE_L44` |44 |`APPAREIL DÉTERIORÉ` NP
-|`CIBLE_V18_VISITE_L45` |45 |`COUVERCLE MANQU/DETERIOR` NP
-|`CIBLE_V18_VISITE_L47` |47 |`ENCOMBRE OU INACCESSIBLE` NP
 |`CIBLE_V18_VISITE_L50` |50 |`RÉPARER APPAREIL` NP
-|`CIBLE_V18_VISITE_L52` |52 |`HORS SERVICE` NP
 |`CIBLE_V18_VISITE_L53` |53 |Toute autre action de clôture NP
 |===
 
@@ -146,32 +118,37 @@ toutes les anomalies accessibles, y compris la signalétique.
 |6
 |`APPAREIL DÉTERIORÉ` - réalisable
 |`CTP`, signalement hors liste utilisable, sans impact d'état.
-|Bloqué par le référentiel : code BSPP et modalité de l'observation absents.
+|Conforme : `BSPP_SINC` si le PEI est disponible ; `BSPP_APDP` s'il est indisponible. Le code
+utilise l'état de la traçabilité et le type `CTP`.
 
 |7
 |`COUVERCLE MANQUANT / DETERIORE` - réalisable
 |`CTP`, signalement hors liste utilisable, sans impact d'état.
-|Bloqué par le référentiel : code BSPP et modalité de l'observation absents.
+|Conforme pour le code `BSPP_CPMD` : le push-worker renseigne ce code dans les deux tableaux
+`anomaliesControlees` et `anomaliesConstatees`. La règle d'observation et l'état restent ceux du
+référentiel métier.
 
 |8
 |`PB DEBIT / PRESSION` - réalisable
 |`CTP`, pression dynamique insuffisante, PEI indisponible si nécessaire.
-|Bloqué par le référentiel : code BSPP, seuil, tableaux d'anomalies et règle d'état à préciser.
+|Conforme pour le code `DEBIT_NON_CONFORME` : le push-worker renseigne ce code dans les deux
+tableaux `anomaliesControlees` et `anomaliesConstatees`. La règle de seuil et d'état reste celle du
+référentiel métier.
 
 |9
 |`DIFFICILE A MANŒUVRER` - réalisable
 |`CTP`, anomalie « Difficile à manœuvrer (obstacle) », sans impact d'état.
-|Bloqué par le référentiel : colonne K vide.
+|Conforme avec `BSPP_DIFF` dans les deux tableaux d'anomalies.
 
 |10
 |`EN ECOULEMENT` - réalisable
 |`CTP`, anomalie « Appareil reste en écoulement », sans impact d'état.
-|Bloqué par le référentiel : code BSPP absent.
+|Conforme avec `BSPP_AREE` dans les deux tableaux d'anomalies.
 
 |11
 |`DEGORGER COFFRE / COLONNE` - réalisable
 |`CTP`, deux anomalies eau dans coffre et colonne, sans impact d'état.
-|Bloqué par le référentiel : les deux codes BSPP sont absents.
+|Conforme avec `BSPP_PODC` et `BSPP_PDCL` dans les deux tableaux d'anomalies.
 
 |12
 |`PB SIGNALETIQUE` - réalisable
@@ -181,7 +158,7 @@ toutes les anomalies accessibles, y compris la signalétique.
 |13
 |`PEI INTROUVABLE` - non réalisable
 |`CTP`, anomalie Introuvable, PEI indisponible.
-|Bloqué par le référentiel : code BSPP absent.
+|Conforme avec `BSPP_INTR` dans les deux tableaux d'anomalies.
 
 |14
 |`DEPOSE OU EN TRAVAUX` - non réalisable
@@ -192,7 +169,7 @@ cependant d'« Inaccessible : dans emprise de chantier », libellé non cohéren
 |15
 |`ENCOMBRE OU INACCESSIBLE` - non réalisable
 |`CTP`, deux anomalies véhicule/abords, sans impact d'état.
-|Bloqué par le référentiel : les deux codes BSPP sont absents.
+|Conforme avec `VEHICULE_EN_STATIONNEMENT_SUR_BI` et `BSPP_ACPV` dans les deux tableaux.
 
 |16
 |`SANS EAU` - non réalisable
@@ -202,7 +179,7 @@ cependant d'« Inaccessible : dans emprise de chantier », libellé non cohéren
 |17
 |`APPAREIL DÉTERIORÉ` - non réalisable
 |`CTP`, Déposé ou en travaux, PEI indisponible.
-|Bloqué par le référentiel : code BSPP absent et même libellé que la ligne 6 avec effet différent.
+|Conforme avec `BSPP_APDP` dans les deux tableaux d'anomalies.
 
 |18
 |`PB SIGNALETIQUE` - non réalisable
@@ -213,7 +190,8 @@ est une coquille à corriger avant recette.
 |19
 |`COUVERCLE MANQUANT / DETERIORE` - non réalisable
 |`CTP`, signalement hors liste utilisable, sans impact d'état.
-|Bloqué par le référentiel : code BSPP et observation absents.
+|Conforme pour le code `BSPP_CPMD` ; le push-worker le renseigne dans les deux tableaux. La règle
+d'observation et l'état restent ceux du référentiel métier.
 |===
 
 === Contrôles périodiques PICF, lignes 21 à 36
@@ -238,32 +216,34 @@ actuel pour le type de visite et les mesures.
 |23
 |`APPAREIL DÉTERIORÉ` - réalisable
 |Signalement hors liste utilisable, sans impact d'état.
-|Bloqué par le référentiel : code BSPP et observation absents.
+|Conforme avec `BSPP_SINC` si le PEI est disponible ; sinon `BSPP_APDP`.
 
 |24
 |`COUVERCLE MANQUANT / DETERIORE` - réalisable
 |Signalement hors liste utilisable, sans impact d'état.
-|Bloqué par le référentiel : code BSPP et observation absents.
+|Conforme pour le code `BSPP_CPMD` ; le push-worker le renseigne dans les deux tableaux. La règle
+d'observation et l'état restent ceux du référentiel métier.
 
 |25
 |`PB DEBIT / PRESSION` - réalisable
 |Pression dynamique insuffisante, PEI indisponible si nécessaire.
-|Bloqué par le référentiel : code BSPP, seuil, tableaux et règle d'état absents.
+|Conforme pour le code `DEBIT_NON_CONFORME` ; le push-worker le renseigne dans les deux tableaux.
+La règle de seuil et d'état reste celle du référentiel métier.
 
 |26
 |`DIFFICILE A MANŒUVRER` - réalisable
 |Difficile à manœuvrer, sans impact d'état.
-|Bloqué par le référentiel : colonne K vide.
+|Conforme avec `BSPP_DIFF` dans les deux tableaux d'anomalies.
 
 |27
 |`EN ECOULEMENT` - réalisable
 |Appareil reste en écoulement, sans impact d'état.
-|Bloqué par le référentiel : code BSPP absent.
+|Conforme avec `BSPP_AREE` dans les deux tableaux d'anomalies.
 
 |28
 |`DEGORGER COFFRE / COLONNE` - réalisable
 |Deux anomalies eau dans coffre et colonne, sans impact d'état.
-|Bloqué par le référentiel : les deux codes BSPP sont absents.
+|Conforme avec `BSPP_PODC` et `BSPP_PDCL` dans les deux tableaux d'anomalies.
 
 |29
 |`PB SIGNALETIQUE` - réalisable
@@ -273,7 +253,7 @@ actuel pour le type de visite et les mesures.
 |30
 |`PEI INTROUVABLE` - non réalisable
 |Introuvable, PEI indisponible.
-|Bloqué par le référentiel : code BSPP absent.
+|Conforme avec `BSPP_INTR` dans les deux tableaux d'anomalies.
 
 |31
 |`DEPOSE OU EN TRAVAUX` - non réalisable
@@ -295,7 +275,7 @@ indisponible ; la cellule K est vide ici.
 |34
 |`APPAREIL DÉTERIORÉ` - non réalisable
 |Déposé ou en travaux, PEI indisponible.
-|Bloqué par le référentiel : code BSPP absent.
+|Conforme avec `BSPP_APDP` dans les deux tableaux d'anomalies.
 
 |35
 |`PB SIGNALETIQUE` - non réalisable
@@ -305,7 +285,8 @@ indisponible ; la cellule K est vide ici.
 |36
 |`COUVERCLE MANQUANT / DETERIORE` - non réalisable
 |Signalement hors liste, sans impact d'état.
-|Bloqué par le référentiel : code BSPP absent et cellule P incomplète.
+|Conforme pour le code `BSPP_CPMD` ; le push-worker le renseigne dans les deux tableaux. La règle
+d'observation et l'état restent ceux du référentiel métier.
 |===
 
 === Visites NP, lignes 38 à 53
@@ -331,32 +312,34 @@ bien ces deux données.
 |40
 |`DIFFICILE A MANŒUVRER`
 |Difficile à manœuvrer, sans impact d'état.
-|Bloqué par le référentiel : code BSPP absent.
+|Conforme avec `BSPP_DIFF` dans les deux tableaux d'anomalies.
 
 |41
 |`EN ECOULEMENT`
 |Appareil reste en écoulement, sans impact d'état.
-|Bloqué par le référentiel : code BSPP absent.
+|Conforme avec `BSPP_AREE` dans les deux tableaux d'anomalies.
 
 |42
 |`DEGORGER COFFRE/COLONNE`
 |Deux anomalies eau dans coffre et colonne, sans impact d'état.
-|Bloqué par le référentiel : les deux codes BSPP sont absents.
+|Conforme avec `BSPP_PODC` et `BSPP_PDCL` dans les deux tableaux d'anomalies.
 
 |43
 |`PB DEBIT/PRESSION`
 |Indisponible hors liste, PEI indisponible si nécessaire.
-|Bloqué par le référentiel : code BSPP, seuil, tableaux et règle d'état absents.
+|Conforme pour le code `DEBIT_NON_CONFORME` ; le push-worker le renseigne dans les deux tableaux.
+La règle de seuil et d'état reste celle du référentiel métier.
 
 |44
 |`APPAREIL DÉTERIORÉ`
 |Déposé ou en travaux, PEI indisponible.
-|Bloqué par le référentiel : code BSPP absent.
+|Conforme avec `BSPP_APDP` dans les deux tableaux d'anomalies.
 
 |45
 |`COUVERCLE MANQU/DETERIOR`
 |Signalement hors liste utilisable, sans impact d'état.
-|Bloqué par le référentiel : code BSPP et observation absents.
+|Conforme pour le code `BSPP_CPMD` ; le push-worker le renseigne dans les deux tableaux. La règle
+d'observation et l'état restent ceux du référentiel métier.
 
 |46
 |`PB SIGNALETIQUE`
@@ -366,7 +349,7 @@ bien ces deux données.
 |47
 |`ENCOMBRE OU INACCESSIBLE`
 |Signalement hors liste utilisable, sans impact d'état.
-|Bloqué par le référentiel : code BSPP et observation absents.
+|Conforme avec `VEHICULE_EN_STATIONNEMENT_SUR_BI` et `BSPP_ACPV` dans les deux tableaux.
 
 |48
 |`DEPOSE OU EN TRAVAUX`
@@ -381,8 +364,8 @@ bien ces deux données.
 |50
 |`RÉPARER APPAREIL`
 |Déposé ou en travaux, PEI indisponible.
-|Écart applicatif : le code de visite ne reconnaît ni `REPARER` ni la variante accentuée ; le code
-REMOcRA reste à valider.
+|Conforme avec `BSPP_APDP` dans les deux tableaux d'anomalies. Le libellé accentué ou non accentué
+`REPARER APPAREIL` est reconnu par le push-worker.
 
 |51
 |`A RENOUVELER`
@@ -392,12 +375,15 @@ REMOcRA reste à valider.
 |52
 |`HORS SERVICE`
 |Sans eau, PEI indisponible.
-|Bloqué par le référentiel : code BSPP absent.
+|Conforme avec `BSPP_APSE`. Cette action ne satisfait pas la règle de création d'IT, limitée à
+`ARRET EAU` et aux motifs `RENOUVELER`.
 
 |53
 |Toute autre action de clôture
 |Signalement hors liste utilisable, sans impact d'état.
-|Bloqué par le référentiel : code BSPP et format d'observation absents.
+|Le code `BSPP_SINC` est implémenté pour le cas explicite `APPAREIL DÉTERIORÉ` en `CTP` avec un
+PEI disponible. Une action de clôture inconnue reste volontairement non mappée jusqu'à validation
+de sa règle métier.
 |===
 
 === Contrôles ponctuels, lignes 54 et 55
@@ -495,9 +481,11 @@ une décision métier explicite.
 
 == Couverture des codes validés
 
-Les tests unitaires `VisitAnomalyMapperTest` couvrent les seuls codes de visite actuellement
-validés par le référentiel : `BSPP_APDP`, `BSPP_APSE`, `BSPP_BISD` et `BSPP_PISD`, ainsi que les
-levées associées à `CONTROLE REALISE` et `EN SERVICE`.
+Les tests unitaires `VisitAnomalyMapperTest` couvrent les codes de visite actuellement validés par
+le référentiel : `BSPP_APDP`, `BSPP_APSE`, `BSPP_BISD`, `BSPP_PISD`, `BSPP_CPMD`,
+`DEBIT_NON_CONFORME`, `BSPP_SINC`, `BSPP_DIFF`, `BSPP_AREE`, `BSPP_PODC`, `BSPP_PDCL`,
+`BSPP_INTR`, `VEHICULE_EN_STATIONNEMENT_SUR_BI` et `BSPP_ACPV`, ainsi que les levées associées
+à `CONTROLE REALISE` et `EN SERVICE`.
 
 Les tests `ReferentielAnomaliesMigrationTest` contrôlent toutes les correspondances de motifs
 d'indisponibilité livrées dans les migrations : `BSPP_APDP`, `BSPP_APSE`, `BSPP_APEN`,

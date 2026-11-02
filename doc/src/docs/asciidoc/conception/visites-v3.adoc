@@ -94,10 +94,12 @@ Les règles suivantes s'appliquent à tous les préfixes de visite :
 * un libellé contenant `CONTROLE REALISE` ou `EN SERVICE` envoie toutes les anomalies accessibles
   dans `anomaliesControlees` et un tableau `anomaliesConstatees` vide ;
 * un libellé contenant `TRAVAUX` ou `RENOUVELER` ajoute `BSPP_APDP` dans les deux tableaux ;
+* un libellé contenant `REPARER APPAREIL` ajoute `BSPP_APDP` dans les deux tableaux ;
 * un libellé contenant `SANS EAU` ajoute `BSPP_APSE` dans les deux tableaux ;
 * un libellé contenant `PB SIGNALETIQUE` ajoute `BSPP_PISD` et/ou `BSPP_BISD` seulement si ces
   codes sont accessibles pour le PEI et le type de visite ;
-* tout autre libellé envoie les deux tableaux vides.
+* les libellés explicitement mappés par le référentiel ajoutent leur code dans les deux tableaux ;
+  un libellé inconnu envoie les deux tableaux vides.
 
 La règle cible qui demande de conserver une anomalie de signalétique lors d'un `EN SERVICE` n'est
 pas encore implémentée : le comportement actuel lève toutes les anomalies accessibles.
