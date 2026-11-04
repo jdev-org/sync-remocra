@@ -57,6 +57,20 @@ public final class IndispoTemporaireMapper {
    */
   public static ObjectNode buildCreatePayload(
       ObjectMapper mapper, String reference, LocalDateTime dateDebut) {
+    return buildCreatePayload(mapper, reference, dateDebut, null);
+  }
+
+  /**
+   * Construit le payload de création avec une date de fin prévisionnelle lorsqu'elle est fournie.
+   *
+   * @param mapper mapper Jackson
+   * @param reference référence du PEI
+   * @param dateDebut date de début locale
+   * @param dateFin date de fin prévisionnelle locale
+   * @return payload prêt à être sérialisé
+   */
+  public static ObjectNode buildCreatePayload(
+      ObjectMapper mapper, String reference, LocalDateTime dateDebut, LocalDateTime dateFin) {
     ObjectNode data = mapper.createObjectNode();
     data.put("motif", DEFAULT_MOTIF);
     data.put("dateDebut", formatApiDate(dateDebut));
@@ -65,6 +79,9 @@ public final class IndispoTemporaireMapper {
     data.put("basculeAutoDisponible", true);
     data.put("basculeAutoIndisponible", true);
     data.set("listeNumeroPei", createPeiList(mapper, reference));
+    if (dateFin != null) {
+      data.put("dateFin", formatApiDate(dateFin));
+    }
     return data;
   }
 

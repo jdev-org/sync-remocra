@@ -60,6 +60,11 @@ WatGIS.
 |`INDISPO_TEMPORAIRE`
 |`date_maj_e`
 |Flux distinct d'indisponibilité temporaire ; il peut aussi créer une visite NP de motifs.
+
+|`date_maj_ae`
+|`INDISPO_TEMPORAIRE`
+|`date_maj_ae`
+|Modification de la date de fin prévisionnelle d'une IT `ARRET EAU`, sans création de visite.
 |===
 
 `date_maj_p` produit un message `CARACTERISTIQUES` pour les modifications patrimoniales. Il ne crée
@@ -69,15 +74,15 @@ pas de visite.
 
 Pour chaque ligne retenue, le changedatacapture mémorise notamment dans `edp.tracabilite_pei` :
 
-* la référence du PEI, son état et les dates `date_maj_*` ;
+* la référence du PEI, son état et les dates `date_maj_*`, notamment `date_maj_ae` ;
 * `date_derniere_visite` et `type_derniere_visite` ;
 * les valeurs d'essai débit/pression et leurs dates ;
 * les données patrimoniales utilisées par le flux `CARACTERISTIQUES`.
 
 Les motifs d'indisponibilité actifs de `VUE_PEI_MOTIF_INDISPO_EDP_REMOCRA` sont mémorisés dans
-`edp.tracabilite_indispo`, avec `date_debut` et `date_fin_prevue`. Dans l'implémentation actuelle,
-ces deux dernières dates ne sont pas utilisées par le push-worker pour construire l'IT REMOcRA :
-il utilise `date_maj_e` pour la création et la clôture.
+`edp.tracabilite_indispo`, avec `date_debut` et `date_fin_prevue`. Le push-worker utilise
+`date_maj_e` pour la création ou la clôture de l'IT et `date_maj_ae` pour modifier sa date de fin
+prévisionnelle.
 
 == Relation avec le référentiel de transferts
 
@@ -122,16 +127,12 @@ Le calcul doit retenir le maximum de toutes les dates réellement lues par le cy
 
 === Indisponibilités temporaires avec dates source
 
-La ligne IT du référentiel cible nécessite une définition complémentaire : déclencheur, champ
-source de début, champ source de fin et distinction entre une fin prévisionnelle et une clôture
-effective. Sans ces éléments, une modification isolée de `date_fin_prevue` ne peut pas être
-détectée ni transmise par le flux actuel.
-
-La feuille `CIBLE - Transferts liés à AE` V1.9 précise désormais la cible : une création d'arrêt
-d'eau doit utiliser `date_maj_e` comme début d'IT et `date_fin_prevue` comme fin, tandis qu'une
-modification isolée de `date_fin_prevue` doit être détectée grâce à un futur `date_maj_ae`. Cette
-date n'est pas présente dans le modèle actuel : une évolution de vue, de traçabilité et du
-changedatacapture est nécessaire avant l'implémentation de cette ligne.
+La feuille `CIBLE - Transferts liés à AE` V1.9 définit `date_maj_e` comme déclencheur de création
+ou de clôture de l'IT et `date_maj_ae` comme déclencheur d'une modification isolée de
+`date_fin_prevue`. Le changedatacapture mémorise ces deux dates, crée un message
+`INDISPO_TEMPORAIRE` et conserve `date_fin_prevue` dans la traçabilité. Le push-worker utilise
+ensuite un `POST` pour créer l'IT ou un `PUT` pour modifier l'IT active, sans créer de visite pour
+le seul changement de date de fin.
 
 == Diagnostic
 

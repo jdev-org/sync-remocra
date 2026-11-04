@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import fr.eaudeparis.syncremocra.db.model.tables.pojos.TracabilitePei;
+import fr.eaudeparis.syncremocra.repository.message.model.MessageModel;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
@@ -112,6 +113,15 @@ public class MessageRepositoryBusinessRulesTest {
                 "APP CHANTIER",
                 "INACCESSIBLE : DANS EMPRISE DE CHANTIER",
                 "INACCESSIBLE : SOUS TERRASSE")));
+  }
+
+  @Test
+  public void shouldRecognizeDateMajAeAsTemporaryUnavailabilityUpdate() {
+    MessageModel message = new MessageModel();
+    message.setType("INDISPO_TEMPORAIRE");
+    message.setDeclencheur("date_maj_ae");
+
+    assertTrue(MessageRepository.isDateFinArretEauUpdate(message));
   }
 
   @Test

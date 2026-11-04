@@ -21,6 +21,8 @@ public class MessageModel {
 
   String json;
 
+  String declencheur;
+
   public Integer getId() {
     return id;
   }
@@ -91,5 +93,13 @@ public class MessageModel {
 
   public void setJson(String json) {
     this.json = json;
+  }
+
+  public String getDeclencheur() {
+    return declencheur;
+  }
+
+  public void setDeclencheur(String declencheur) {
+    this.declencheur = declencheur;
   }
 }

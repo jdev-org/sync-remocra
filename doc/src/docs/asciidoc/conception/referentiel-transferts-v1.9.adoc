@@ -444,23 +444,22 @@ ci-dessous sont une cible, pas un comportement validé de la passerelle actuelle
 `date_maj_e` modifiée.
 |Mettre le PEI indisponible, créer une visite NP avec Sans eau et créer une IT dont le début est
 `date_maj_e` et la fin est `date_fin_prevue`.
-|Écart applicatif : le code actuel peut créer l'IT et la visite de motifs, mais l'IT ne porte pas
-la date de fin prévisionnelle de la vue.
+|Conforme après V1.40 : le changedatacapture crée un message `INDISPO_TEMPORAIRE` et le
+push-worker transmet `date_fin_prevue` lors de la création de l'IT.
 
 |5
 |Modification isolée de `date_fin_prevue`.
 |Modifier la date de fin de l'IT active.
-|Écart applicatif : `date_maj_ae` n'existe pas dans la vue, la traçabilité ni le
-changedatacapture. Une modification de la seule date de fin n'est donc pas détectée.
+|Conforme après V1.40 : `date_maj_ae` est détectée par le changedatacapture, mémorisée dans la
+traçabilité et déclenche un `PUT` de l'IT active, sans visite supplémentaire.
 
 |6
 |Passage de l'arrêt d'eau à `TERMINEE` ou `ANNULEE`, PEI indisponible vers disponible,
 `date_maj_e` modifiée.
 |Retirer l'anomalie Sans eau, fermer l'IT active et mettre le PEI disponible seulement sans
 anomalie bloquante résiduelle.
-|Partiellement conforme : le code ferme l'IT et peut envoyer la levée des motifs. La règle de
-maintien de l'état selon les anomalies résiduelles est appliquée par REMOcRA ; la fermeture de
-l'IT n'envoie pas de date de fin prévisionnelle.
+|Conforme : le code ferme l'IT avec `date_maj_e` et peut envoyer la levée des motifs. La règle de
+maintien de l'état selon les anomalies résiduelles est appliquée par REMOcRA.
 |===
 
 == Préparation des développements ligne par ligne

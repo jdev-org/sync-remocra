@@ -50,6 +50,18 @@ public class IndispoTemporaireMapperTest {
   }
 
   @Test
+  public void shouldIncludeExpectedEndDateWhenCreatingTemporaryUnavailability() {
+    ObjectNode payload =
+        IndispoTemporaireMapper.buildCreatePayload(
+            mapper,
+            "PEI-001",
+            LocalDateTime.of(2026, 11, 4, 8, 30),
+            LocalDateTime.of(2026, 11, 5, 18, 0));
+
+    assertTrue(payload.get("dateFin").asText().startsWith("2026-11-05T18:00:00"));
+  }
+
+  @Test
   public void shouldFindActiveIndispoFromV3Contract() {
     List<Map<String, Object>> indispos = new ArrayList<Map<String, Object>>();
 

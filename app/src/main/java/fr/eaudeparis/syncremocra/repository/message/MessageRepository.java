@@ -34,6 +34,7 @@ import java.net.HttpURLConnection;
 import java.text.Normalizer;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -347,6 +348,23 @@ public class MessageRepository {
         IndispoTemporaireMapper.findActiveIndispo(dataIndispoEnCours, reference);
     List<String> trackedIndispoMotifs = getTrackedIndispoMotifs(reference);
 
+    if (isDateFinArretEauUpdate(message) && indispoActive != null) {
+      LocalDateTime dateFinPrevue = getCurrentArretEauDateFin(traca);
+      if (dateFinPrevue != null) {
+        logger.info("PEI " + reference + " - mise à jour de la date de fin de l'IT ARRET EAU");
+        indispoTemp.put("methode", "PUT");
+        indispoTemp.put(
+            "path",
+            apiEndpoints.indispoTemporaire(IndispoTemporaireMapper.getIndispoId(indispoActive)));
+        indispoTemp.set(
+            "data",
+            IndispoTemporaireMapper.buildUpdatePayload(
+                mapper, reference, indispoActive, dateFinPrevue));
+        return indispoTemp;
+      }
+      logger.warn("Aucune date_fin_prevue ARRET EAU trouvée pour la traca " + traca.getId());
+    }
+
     // Si Indisponible, on créé une indispo temporaire s'il n'en existe pas déjà une
     // sur ce PEI
     if ("Indisponible".equalsIgnoreCase(traca.getEtat())) {
@@ -382,9 +400,11 @@ public class MessageRepository {
         indispoTemp.put("methode", "POST");
         indispoTemp.put("path", apiEndpoints.indispoTemporaire());
         try {
+          LocalDateTime dateFinPrevue = getCurrentArretEauDateFin(traca);
           indispoTemp.set(
               "data",
-              IndispoTemporaireMapper.buildCreatePayload(mapper, reference, traca.getDateMajE()));
+              IndispoTemporaireMapper.buildCreatePayload(
+                  mapper, reference, traca.getDateMajE(), dateFinPrevue));
         } catch (Exception e) {
           logger.error("Le champ date_maj_e présente une anomalie (traca " + traca.getId() + ")");
           throw e;
@@ -449,6 +469,25 @@ public class MessageRepository {
         .from(TRACABILITE_INDISPO)
         .where(TRACABILITE_INDISPO.ID_TRACA_PEI.eq(traca.getId().longValue()))
         .fetchInto(String.class);
+  }
+
+  private LocalDateTime getCurrentArretEauDateFin(TracabilitePei traca) {
+    return context
+        .select(TRACABILITE_INDISPO.DATE_FIN_PREVUE)
+        .from(TRACABILITE_INDISPO)
+        .where(
+            TRACABILITE_INDISPO
+                .ID_TRACA_PEI
+                .eq(traca.getId().longValue())
+                .and(TRACABILITE_INDISPO.MOTIF_INDISPO.equalIgnoreCase("ARRET EAU")))
+        .orderBy(TRACABILITE_INDISPO.DATE_TRACA.desc())
+        .limit(1)
+        .fetchOneInto(LocalDateTime.class);
+  }
+
+  static boolean isDateFinArretEauUpdate(MessageModel message) {
+    return "INDISPO_TEMPORAIRE".equalsIgnoreCase(message.getType())
+        && "date_maj_ae".equalsIgnoreCase(message.getDeclencheur());
   }
 
   /**
